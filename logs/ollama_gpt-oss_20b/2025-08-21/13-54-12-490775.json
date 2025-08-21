@@ -1,0 +1,42 @@
+{
+  "timestamp": "2025-08-21T13:54:12.490812",
+  "model": "ollama:gpt-oss:20b",
+  "request": {
+    "task": "keyword_analysis",
+    "code_file": "/home/ace4_sijune/vul4j_test/VUL4J-1/VUL4J/vulnerable/ObjectArrayCodec.java"
+  },
+  "response": {
+    "vulnerability_keywords": [
+      {
+        "vulnerability": "Arbitrary Class Instantiation via Deserialization",
+        "keywords": [
+          "Deserialization",
+          "Arbitrary Class Instantiation",
+          "Type hints",
+          "TypeUtils.cast",
+          "Remote code execution"
+        ]
+      },
+      {
+        "vulnerability": "Denial‑of‑Service via Large Array Size",
+        "keywords": [
+          "Denial of Service",
+          "Large Array",
+          "OutOfMemoryError",
+          "Array.newInstance",
+          "Heap exhaustion"
+        ]
+      },
+      {
+        "vulnerability": "Potential Stack Overflow from Deeply Nested Arrays",
+        "keywords": [
+          "StackOverflowError",
+          "Deeply Nested Arrays",
+          "Recursion depth",
+          "Recursive deserialization",
+          "Application crash"
+        ]
+      }
+    ]
+  }
+}

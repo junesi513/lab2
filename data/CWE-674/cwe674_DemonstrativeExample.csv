@@ -1,0 +1,24 @@
+cwe_id,example_id,entry_order,IntroText,Nature,Language,ExampleCode,BodyText
+674,DX-204,1,In this example a mistake exists in the code where the exit condition contained in flg is never called. This results in the function calling itself over and over again until the stack is exhausted.,NULL,NULL,NULL,NULL
+674,DX-204,2,NULL,Bad,C,"void do_something_recursive (int flg)
+ {
+
+```
+	 ... // Do some real work here, but the value of flg is unmodified
+	 if (flg) { do_something_recursive (flg); } // flg is never modified so it is always TRUE - this call will continue until the stack explodes
+ }
+ int flag = 1; // Set to TRUE
+ do_something_recursive (flag);
+```",NULL
+674,DX-204,3,NULL,NULL,NULL,NULL,Note that the only difference between the Good and Bad examples is that the recursion flag will change value and cause the recursive call to return.
+674,DX-204,4,NULL,Good,C,"void do_something_recursive (int flg)
+ {
+
+```
+	 ... // Do some real work here
+	 // Modify value of flg on done condition
+	 if (flg) { do_something_recursive (flg); } // returns when flg changes to 0
+ }
+ int flag = 1; // Set to TRUE
+ do_something_recursive (flag);
+```",NULL

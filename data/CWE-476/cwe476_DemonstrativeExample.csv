@@ -1,0 +1,56 @@
+cwe_id,example_id,entry_order,IntroText,Nature,Language,ExampleCode,BodyText
+476,DX-1,1,"This example takes an IP address from a user, verifies that it is well formed and then looks up the hostname and copies it into a buffer.",NULL,NULL,NULL,NULL
+476,DX-1,2,NULL,Bad,C,"```
+	void host_lookup(char *user_supplied_addr){
+			struct hostent *hp;
+			in_addr_t *addr;
+			char hostname[64];
+			in_addr_t inet_addr(const char *cp);
+```
+/*routine that ensures user_supplied_addr is in the right format for conversion */* 
+			
+			validate_addr_form(user_supplied_addr);
+			addr = inet_addr(user_supplied_addr);
+			hp = gethostbyaddr( addr, sizeof(struct in_addr), AF_INET);
+			strcpy(hostname, hp->h_name);}",NULL
+476,DX-1,3,NULL,NULL,NULL,NULL,"If an attacker provides an address that appears to be well-formed, but the address does not resolve to a hostname, then the call to gethostbyaddr() will return NULL. Since the code does not check the return value from gethostbyaddr (CWE-252), a NULL pointer dereference (CWE-476) would then occur in the call to strcpy()."
+476,DX-1,4,NULL,NULL,NULL,NULL,Note that this code is also vulnerable to a buffer overflow (CWE-119).
+476,GEN-2,1,"In the following code, the programmer assumes that the system always has a property named ""cmd"" defined. If an attacker can control the program's environment so that ""cmd"" is not defined, the program throws a NULL pointer exception when it attempts to call the trim() method.",NULL,NULL,NULL,NULL
+476,GEN-2,2,NULL,Bad,Java,"```
+	String cmd = System.getProperty(""cmd"");
+	cmd = cmd.trim();
+```",NULL
+476,DX-110,1,This Android application has registered to handle a URL when sent an intent:,NULL,NULL,NULL,NULL
+476,DX-110,2,NULL,Bad,Java,"```
+```
+...* 
+	IntentFilter filter = new IntentFilter(""com.example.URLHandler.openURL"");
+	MyReceiver receiver = new MyReceiver();
+	registerReceiver(receiver, filter);
+	
+	 *...* 
+	
+	public class UrlHandlerReceiver extends BroadcastReceiver {
+	```
+			@Override
+			public void onReceive(Context context, Intent intent) {
+					if(""com.example.URLHandler.openURL"".equals(intent.getAction())) {
+						String URL = intent.getStringExtra(""URLToOpen"");
+						int length = URL.length();
+```
+...* 
+					}}}",NULL
+476,DX-110,3,NULL,NULL,NULL,NULL,"The application assumes the URL will always be included in the intent. When the URL is not present, the call to getStringExtra() will return null, thus causing a null pointer exception when length() is called."
+476,GEN-4,1,Consider the following example of a typical client server exchange. The HandleRequest function is intended to perform a request and use a defer to close the connection whenever the function returns.,NULL,NULL,NULL,NULL
+476,GEN-4,2,NULL,Bad,Go,"```
+	func HandleRequest(client http.Client, request *http.Request) (*http.Response, error) { 
+		 response, err := client.Do(request)
+		 defer response.Body.Close()
+		 if err != nil { 
+			 return nil, err
+		 }
+		...
+	 }
+```",NULL
+476,GEN-4,3,NULL,NULL,NULL,NULL,"If a user supplies a malformed request or violates the client policy, the Do method can return a nil response and a non-nil err."
+476,GEN-4,4,NULL,NULL,NULL,NULL,"This HandleRequest Function evaluates the close before checking the error. A deferred call's arguments are evaluated immediately, so the defer statement panics due to a nil response."

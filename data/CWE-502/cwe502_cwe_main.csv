@@ -1,0 +1,2 @@
+idx,ID,Name,Description,ExtendedDescription
+0,502,Deserialization of Untrusted Data,The product deserializes untrusted data without sufficiently ensuring that the resulting data will be valid.,

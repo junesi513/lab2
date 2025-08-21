@@ -1,0 +1,11 @@
+{
+  "timestamp": "2025-08-19T20:09:14.806536",
+  "model": "ollama:gpt-oss:20b",
+  "request": {
+    "system_prompt_id": "role_developer",
+    "system_prompt": "You are a senior software developer. Please provide code examples that are easy to understand for junior developers.",
+    "user_prompt_id": "question_hello",
+    "user_prompt": "Hello, what is your name?"
+  },
+  "response": "Hello! I’m ChatGPT, your friendly AI assistant. How can I help you today?"
+}

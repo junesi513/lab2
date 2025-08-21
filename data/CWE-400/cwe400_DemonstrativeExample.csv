@@ -1,0 +1,162 @@
+cwe_id,example_id,entry_order,IntroText,Nature,Language,ExampleCode,BodyText
+400,GEN-1,1,The following example demonstrates the weakness.,NULL,NULL,NULL,NULL
+400,GEN-1,2,NULL,Bad,Java,"```
+	class Worker implements Executor {
+			...
+			public void execute(Runnable r) {
+					try {
+						...
+					}
+					catch (InterruptedException ie) {
+```
+// postpone response* 
+							Thread.currentThread().interrupt();}}
+			
+			public Worker(Channel ch, int nworkers) {
+			```
+				...
+			}
+			protected void activate() {
+					Runnable loop = new Runnable() {
+							public void run() {
+									try {
+										for (;;) {
+											Runnable r = ...;
+											r.run();
+										}
+									}
+									catch (InterruptedException ie) {
+										...
+									}
+							}
+					};
+					new Thread(loop).start();
+			}
+	}
+```",NULL
+400,GEN-1,3,NULL,NULL,NULL,NULL,There are no limits to runnables. Potentially an attacker could cause resource problems very quickly.
+400,DX-25,1,This code allocates a socket and forks each time it receives a new connection.,NULL,NULL,NULL,NULL
+400,DX-25,2,NULL,Bad,C,"```
+	sock=socket(AF_INET, SOCK_STREAM, 0);
+	while (1) {
+		newsock=accept(sock, ...);
+		printf(""A connection has been accepted\n"");
+		pid = fork();
+	}
+```",NULL
+400,DX-25,3,NULL,NULL,NULL,NULL,"The program does not track how many connections have been made, and it does not limit the number of connections. Because forking is a relatively expensive operation, an attacker would be able to cause the system to run out of CPU, processes, or memory by making a large number of connections. Alternatively, an attacker could consume all available connections, preventing others from accessing the system remotely."
+400,DX-50,1,"In the following example a server socket connection is used to accept a request to store data on the local file system using a specified filename. The method openSocketConnection establishes a server socket to accept requests from a client. When a client establishes a connection to this service the getNextMessage method is first used to retrieve from the socket the name of the file to store the data, the openFileToWrite method will validate the filename and open a file to write to on the local file system. The getNextMessage is then used within a while loop to continuously read data from the socket and output the data to the file until there is no longer any data from the socket.",NULL,NULL,NULL,NULL
+400,DX-50,2,NULL,Bad,C,"```
+	int writeDataFromSocketToFile(char *host, int port)
+	{
+			char filename[FILENAME_SIZE];
+			char buffer[BUFFER_SIZE];
+			int socket = openSocketConnection(host, port);
+			if (socket < 0) {
+				printf(""Unable to open socket connection"");
+				return(FAIL);
+			}
+			if (getNextMessage(socket, filename, FILENAME_SIZE) > 0) {
+					if (openFileToWrite(filename) > 0) {
+							while (getNextMessage(socket, buffer, BUFFER_SIZE) > 0){
+								if (!(writeToFile(buffer) > 0))
+									break;
+							}
+					}
+					closeFile();
+			}
+			closeSocket(socket);
+	}
+```",NULL
+400,DX-50,3,NULL,NULL,NULL,NULL,This example creates a situation where data can be dumped to a file on the local file system without any limits on the size of the file. This could potentially exhaust file or disk resources and/or limit other clients' ability to access the service.
+400,DX-51,1,"In the following example, the processMessage method receives a two dimensional character array containing the message to be processed. The two-dimensional character array contains the length of the message in the first character array and the message body in the second character array. The getMessageLength method retrieves the integer value of the length from the first character array. After validating that the message length is greater than zero, the body character array pointer points to the start of the second character array of the two-dimensional character array and memory is allocated for the new body character array.",NULL,NULL,NULL,NULL
+400,DX-51,2,NULL,Bad,C,"```
+```
+/* process message accepts a two-dimensional character array of the form [length][body] containing the message to be processed */* 
+	int processMessage(char **message)
+	{
+	```
+			char *body;
+			int length = getMessageLength(message[0]);
+			if (length > 0) {
+				body = &message[1][0];
+				processMessageBody(body);
+				return(SUCCESS);
+			}
+			else {
+				printf(""Unable to process message; invalid message length"");
+				return(FAIL);
+			}
+	}
+```",NULL
+400,DX-51,3,NULL,NULL,NULL,NULL,"This example creates a situation where the length of the body character array can be very large and will consume excessive memory, exhausting system resources. This can be avoided by restricting the length of the second character array with a maximum length check"
+400,DX-51,4,NULL,NULL,NULL,NULL,"Also, consider changing the type from 'int' to 'unsigned int', so that you are always guaranteed that the number is positive. This might not be possible if the protocol specifically requires allowing negative values, or if you cannot control the return value from getMessageLength(), but it could simplify the check to ensure the input is positive, and eliminate other errors such as signed-to-unsigned conversion errors (CWE-195) that may occur elsewhere in the code."
+400,DX-51,5,NULL,Good,C,"```
+	unsigned int length = getMessageLength(message[0]);
+	if ((length > 0) && (length < MAX_LENGTH)) {...}
+```",NULL
+400,DX-52,1,"In the following example, a server object creates a server socket and accepts client connections to the socket. For every client connection to the socket a separate thread object is generated using the ClientSocketThread class that handles request made by the client through the socket.",NULL,NULL,NULL,NULL
+400,DX-52,2,NULL,Bad,Java,"```
+	public void acceptConnections() {
+			try {
+				ServerSocket serverSocket = new ServerSocket(SERVER_PORT);
+				int counter = 0;
+				boolean hasConnections = true;
+				while (hasConnections) {
+					Socket client = serverSocket.accept();
+					Thread t = new Thread(new ClientSocketThread(client));
+					t.setName(client.getInetAddress().getHostName() + "":"" + counter++);
+					t.start();
+				}
+				serverSocket.close();
+			} catch (IOException ex) {...}
+	}
+```",NULL
+400,DX-52,3,NULL,NULL,NULL,NULL,In this example there is no limit to the number of client connections and client threads that are created. Allowing an unlimited number of client connections and threads could potentially overwhelm the system and system resources.
+400,DX-52,4,NULL,NULL,NULL,NULL,The server should limit the number of client connections and the client threads that are created. This can be easily done by creating a thread pool object that limits the number of threads that are generated.
+400,DX-52,5,NULL,Good,Java,"```
+	public static final int SERVER_PORT = 4444;
+	public static final int MAX_CONNECTIONS = 10;
+	...
+	public void acceptConnections() {
+			try {
+				ServerSocket serverSocket = new ServerSocket(SERVER_PORT);
+				int counter = 0;
+				boolean hasConnections = true;
+				while (hasConnections) {
+					hasConnections = checkForMoreConnections();
+					Socket client = serverSocket.accept();
+					Thread t = new Thread(new ClientSocketThread(client));
+					t.setName(client.getInetAddress().getHostName() + "":"" + counter++);
+					ExecutorService pool = Executors.newFixedThreadPool(MAX_CONNECTIONS);
+					pool.execute(t);
+				}
+				serverSocket.close();
+			} catch (IOException ex) {...}
+	}
+```",NULL
+400,GEN-6,1,"In the following example, the serve function receives an http request and an http response writer. It reads the entire request body.",NULL,NULL,NULL,NULL
+400,GEN-6,2,NULL,Bad,Go,"```
+	func serve(w http.ResponseWriter, r *http.Request) { 
+		 var body []byte
+		 if r.Body != nil {
+			 if data, err := io.ReadAll(r.Body); err == nil {
+				 body = data
+			 }
+		 }
+	 }
+```",NULL
+400,GEN-6,3,NULL,NULL,NULL,NULL,"Because ReadAll is defined to read from src until EOF, it does not treat an EOF from Read as an error to be reported. This example creates a situation where the length of the body supplied can be very large and will consume excessive memory, exhausting system resources. This can be avoided by ensuring the body does not exceed a predetermined length of bytes."
+400,GEN-6,4,NULL,NULL,NULL,NULL,"MaxBytesReader prevents clients from accidentally or maliciously sending a large request and wasting server resources. If possible, the code could be changed to tell ResponseWriter to close the connection after the limit has been reached."
+400,GEN-6,5,NULL,Good,Go,"```
+	func serve(w http.ResponseWriter, r *http.Request) { 
+		 var body []byte
+		 const MaxRespBodyLength = 1e6
+		 if r.Body != nil {
+			 r.Body = http.MaxBytesReader(w, r.Body, MaxRespBodyLength)
+			 if data, err := io.ReadAll(r.Body); err == nil {
+				 body = data
+			 }
+		 }
+	 }
+```",NULL

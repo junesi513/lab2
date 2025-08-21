@@ -1,0 +1,3 @@
+cwe_id,example_id,entry_order,IntroText,Nature,Language,ExampleCode,BodyText
+345,DX-153,1,"In 2022, the OT:ICEFALL study examined products by 10 different Operational Technology (OT) vendors. The researchers reported 56 vulnerabilities and said that the products were ""insecure by design"" [REF-1283]. If exploited, these vulnerabilities often allowed adversaries to change how the products operated, ranging from denial of service to changing the code that the products executed. Since these products were often used in industries such as power, electrical, water, and others, there could even be safety implications.",NULL,NULL,NULL,NULL
+345,DX-153,2,NULL,NULL,NULL,NULL,Multiple vendors did not sign firmware images.

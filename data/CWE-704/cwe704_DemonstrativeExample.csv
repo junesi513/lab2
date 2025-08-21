@@ -1,0 +1,50 @@
+cwe_id,example_id,entry_order,IntroText,Nature,Language,ExampleCode,BodyText
+704,DX-74,1,"In this example, depending on the return value of accecssmainframe(), the variable amount can hold a negative value when it is returned. Because the function is declared to return an unsigned value, amount will be implicitly cast to an unsigned number.",NULL,NULL,NULL,NULL
+704,DX-74,2,NULL,Bad,C,"```
+	unsigned int readdata () {
+		int amount = 0;
+		...
+		amount = accessmainframe();
+		...
+		return amount;
+	}
+```",NULL
+704,DX-74,3,NULL,NULL,NULL,NULL,"If the return value of accessmainframe() is -1, then the return value of readdata() will be 4,294,967,295 on a system that uses 32-bit integers."
+704,DX-188,1,"The following code uses a union to support the representation of different types of messages. It formats messages differently, depending on their type.",NULL,NULL,NULL,NULL
+704,DX-188,2,NULL,Bad,C,"```
+	#define NAME_TYPE 1
+	#define ID_TYPE 2
+	struct MessageBuffer
+	{
+		int msgType;
+		union {
+			char *name;
+			int nameID;
+		};
+	};
+	int main (int argc, char **argv) {
+			struct MessageBuffer buf;
+			char *defaultMessage = ""Hello World"";
+			buf.msgType = NAME_TYPE;
+			buf.name = defaultMessage;
+			printf(""Pointer of buf.name is %p\n"", buf.name);
+```
+/* This particular value for nameID is used to make the code architecture-independent. If coming from untrusted input, it could be any value. */* 
+			
+			buf.nameID = (int)(defaultMessage + 1);
+			printf(""Pointer of buf.name is now %p\n"", buf.name);
+			if (buf.msgType == NAME_TYPE) {
+			```
+				printf(""Message: %s\n"", buf.name);
+			}
+			else {
+				printf(""Message: Use ID %d\n"", buf.nameID);
+			}
+	}
+```",NULL
+704,DX-188,3,NULL,NULL,NULL,NULL,"The code intends to process the message as a NAME_TYPE, and sets the default message to ""Hello World."" However, since both buf.name and buf.nameID are part of the same union, they can act as aliases for the same memory location, depending on memory layout after compilation."
+704,DX-188,4,NULL,NULL,NULL,NULL,"As a result, modification of buf.nameID - an int - can effectively modify the pointer that is stored in buf.name - a string."
+704,DX-188,5,NULL,NULL,NULL,NULL,Execution of the program might generate output such as:
+704,DX-188,6,NULL,NULL,NULL,NULL,``` Pointer of name is 10830 Pointer of name is now 10831 Message: ello World ```
+704,DX-188,7,NULL,NULL,NULL,NULL,"Notice how the pointer for buf.name was changed, even though buf.name was not explicitly modified."
+704,DX-188,8,NULL,NULL,NULL,NULL,"In this case, the first ""H"" character of the message is omitted. However, if an attacker is able to fully control the value of buf.nameID, then buf.name could contain an arbitrary pointer, leading to out-of-bounds reads or writes."

@@ -1,0 +1,34 @@
+cwe_id,example_id,entry_order,IntroText,Nature,Language,ExampleCode,BodyText
+502,GEN-1,1,This code snippet deserializes an object from a file and uses it as a UI button:,NULL,NULL,NULL,NULL
+502,GEN-1,2,NULL,Bad,Java,"```
+	try {
+		File file = new File(""object.obj"");
+		ObjectInputStream in = new ObjectInputStream(new FileInputStream(file));
+		javax.swing.JButton button = (javax.swing.JButton) in.readObject();
+		in.close();
+	}
+```",NULL
+502,GEN-1,3,NULL,NULL,NULL,NULL,This code does not attempt to verify the source or contents of the file before deserializing it. An attacker may be able to replace the intended file with a file that contains arbitrary malicious code which will be executed when the button is pressed.
+502,GEN-1,4,NULL,NULL,NULL,NULL,"To mitigate this, explicitly define final readObject() to prevent deserialization. An example of this is:"
+502,GEN-1,5,NULL,Good,Java,"```
+	private final void readObject(ObjectInputStream in) throws java.io.IOException {
+	throw new java.io.IOException(""Cannot be deserialized""); }
+```",NULL
+502,GEN-2,1,"In Python, the Pickle library handles the serialization and deserialization processes. In this example derived from [REF-467], the code receives and parses data, and afterwards tries to authenticate a user based on validating a token.",NULL,NULL,NULL,NULL
+502,GEN-2,2,NULL,Bad,Python,"```
+	try {
+			class ExampleProtocol(protocol.Protocol):
+			def dataReceived(self, data):
+			# Code that would be here would parse the incoming data
+			# After receiving headers, call confirmAuth() to authenticate
+			def confirmAuth(self, headers):
+			try:
+			token = cPickle.loads(base64.b64decode(headers['AuthToken']))
+			if not check_hmac(token['signature'], token['data'], getSecretKey()):
+			raise AuthFail
+			self.secure_data = token['data']
+			except:
+			raise AuthFail
+	}
+```",NULL
+502,GEN-2,3,NULL,NULL,NULL,NULL,"Unfortunately, the code does not verify that the incoming data is legitimate. An attacker can construct a illegitimate, serialized object ""AuthToken"" that instantiates one of Python's subprocesses to execute arbitrary commands. For instance,the attacker could construct a pickle that leverages Python's subprocess module, which spawns new processes and includes a number of arguments for various uses. Since Pickle allows objects to define the process for how they should be unpickled, the attacker can direct the unpickle process to call Popen in the subprocess module and execute /bin/sh."

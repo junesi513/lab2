@@ -1,0 +1,150 @@
+cwe_id,example_id,entry_order,IntroText,Nature,Language,ExampleCode,BodyText
+22,DX-27,1,The following code could be for a social networking application in which each user's profile information is stored in a separate file. All files are stored in a single directory.,NULL,NULL,NULL,NULL
+22,DX-27,2,NULL,Bad,Perl,"```
+	my $dataPath = ""/users/cwe/profiles"";
+	my $username = param(""user"");
+	my $profilePath = $dataPath . ""/"" . $username;
+	open(my $fh, ""<"", $profilePath) || ExitError(""profile read error: $profilePath"");
+	print ""<ul>\n"";
+	while (<$fh>) {
+		print ""<li>$_</li>\n"";
+	}
+	print ""</ul>\n"";
+```",NULL
+22,DX-27,3,NULL,NULL,NULL,NULL,"While the programmer intends to access files such as ""/users/cwe/profiles/alice"" or ""/users/cwe/profiles/bob"", there is no verification of the incoming user parameter. An attacker could provide a string such as:"
+22,DX-27,4,NULL,Attack,NULL,"```
+	../../../etc/passwd
+```",NULL
+22,DX-27,5,NULL,NULL,NULL,NULL,The program would generate a profile pathname like this:
+22,DX-27,6,NULL,Result,NULL,"```
+	/users/cwe/profiles/../../../etc/passwd
+```",NULL
+22,DX-27,7,NULL,NULL,NULL,NULL,"When the file is opened, the operating system resolves the ""../"" during path canonicalization and actually accesses this file:"
+22,DX-27,8,NULL,Result,NULL,"```
+	/etc/passwd
+```",NULL
+22,DX-27,9,NULL,NULL,NULL,NULL,"As a result, the attacker could read the entire text of the password file."
+22,DX-27,10,NULL,NULL,NULL,NULL,"Notice how this code also contains an error message information leak (CWE-209) if the user parameter does not produce a file that exists: the full pathname is provided. Because of the lack of output encoding of the file that is retrieved, there might also be a cross-site scripting problem (CWE-79) if profile contains any HTML, but other code would need to be examined."
+22,DX-18,1,"In the example below, the path to a dictionary file is read from a system property and used to initialize a File object.",NULL,NULL,NULL,NULL
+22,DX-18,2,NULL,Bad,Java,"```
+	String filename = System.getProperty(""com.domain.application.dictionaryFile"");
+	File dictionaryFile = new File(filename);
+```",NULL
+22,DX-18,3,NULL,NULL,NULL,NULL,"However, the path is not validated or modified to prevent it from containing relative or absolute path sequences before creating the File object. This allows anyone who can control the system property to determine what file is used. Ideally, the path should be resolved relative to some kind of application or user home directory."
+22,DX-2,1,"The following code takes untrusted input and uses a regular expression to filter ""../"" from the input. It then appends this result to the /home/user/ directory and attempts to read the file in the final resulting path.",NULL,NULL,NULL,NULL
+22,DX-2,2,NULL,Bad,Perl,"```
+	my $Username = GetUntrustedInput();
+	$Username =~ s/\.\.\///;
+	my $filename = ""/home/user/"" . $Username;
+	ReadAndSendFile($filename);
+```",NULL
+22,DX-2,3,NULL,NULL,NULL,NULL,"Since the regular expression does not have the /g global match modifier, it only removes the first instance of ""../"" it comes across. So an input value such as:"
+22,DX-2,4,NULL,Attack,NULL,"```
+	../../../etc/passwd
+```",NULL
+22,DX-2,5,NULL,NULL,NULL,NULL,"will have the first ""../"" stripped, resulting in:"
+22,DX-2,6,NULL,Result,NULL,"```
+	../../etc/passwd
+```",NULL
+22,DX-2,7,NULL,NULL,NULL,NULL,This value is then concatenated with the /home/user/ directory:
+22,DX-2,8,NULL,Result,NULL,"```
+	/home/user/../../etc/passwd
+```",NULL
+22,DX-2,9,NULL,NULL,NULL,NULL,which causes the /etc/passwd file to be retrieved once the operating system has resolved the ../ sequences in the pathname. This leads to relative path traversal (CWE-23).
+22,GEN-4,1,"The following code attempts to validate a given input path by checking it against an allowlist and once validated delete the given file. In this specific case, the path is considered valid if it starts with the string ""/safe_dir/"".",NULL,NULL,NULL,NULL
+22,GEN-4,2,NULL,Bad,Java,"```
+	String path = getInputPath();
+	if (path.startsWith(""/safe_dir/""))
+	{
+		File f = new File(path);
+		f.delete()
+	}
+```",NULL
+22,GEN-4,3,NULL,NULL,NULL,NULL,An attacker could provide an input such as this:
+22,GEN-4,4,NULL,Attack,NULL,"```
+	/safe_dir/../important.dat
+```",NULL
+22,GEN-4,5,NULL,NULL,NULL,NULL,"The software assumes that the path is valid because it starts with the ""/safe_path/"" sequence, but the ""../"" sequence will cause the program to delete the important.dat file in the parent directory"
+22,DX-22,1,The following code demonstrates the unrestricted upload of a file with a Java servlet and a path traversal vulnerability. The action attribute of an HTML form is sending the upload file request to the Java servlet.,NULL,NULL,NULL,NULL
+22,DX-22,2,NULL,Good,HTML,"```
+	<form action=""FileUploadServlet"" method=""post"" enctype=""multipart/form-data"">
+	Choose a file to upload:
+	<input type=""file"" name=""filename""/>
+	<br/>
+	<input type=""submit"" name=""submit"" value=""Submit""/>
+	</form>
+```",NULL
+22,DX-22,3,NULL,NULL,NULL,NULL,"When submitted the Java servlet's doPost method will receive the request, extract the name of the file from the Http request header, read the file contents from the request and output the file to the local upload directory."
+22,DX-22,4,NULL,Bad,Java,"```
+	public class FileUploadServlet extends HttpServlet {
+			...
+			protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+					response.setContentType(""text/html"");
+					PrintWriter out = response.getWriter();
+					String contentType = request.getContentType();
+					// the starting position of the boundary header
+					int ind = contentType.indexOf(""boundary="");
+					String boundary = contentType.substring(ind+9);
+					String pLine = new String();
+					String uploadLocation = new String(UPLOAD_DIRECTORY_STRING); //Constant value
+					// verify that content type is multipart form data
+					if (contentType != null && contentType.indexOf(""multipart/form-data"") != -1) {
+							// extract the filename from the Http header
+							BufferedReader br = new BufferedReader(new InputStreamReader(request.getInputStream()));
+							...
+							pLine = br.readLine();
+							String filename = pLine.substring(pLine.lastIndexOf(""\\""), pLine.lastIndexOf(""\""""));
+							...
+							// output the file to the local upload directory
+							try {
+									BufferedWriter bw = new BufferedWriter(new FileWriter(uploadLocation+filename, true));
+									for (String line; (line=br.readLine())!=null; ) {
+										if (line.indexOf(boundary) == -1) {
+											bw.write(line);
+											bw.newLine();
+											bw.flush();
+										}
+									} //end of for loop
+									bw.close();
+							} catch (IOException ex) {...}
+							// output successful upload response HTML page
+					}
+					// output unsuccessful upload response HTML page
+					else
+					{...}
+			}
+				...
+	}
+```",NULL
+22,DX-22,5,NULL,NULL,NULL,NULL,This code does not perform a check on the type of the file being uploaded (CWE-434). This could allow an attacker to upload any executable file or other file with malicious code.
+22,DX-22,6,NULL,NULL,NULL,NULL,"Additionally, the creation of the BufferedWriter object is subject to relative path traversal (CWE-23). Since the code does not check the filename that is provided in the header, an attacker can use ""../"" sequences to write to files outside of the intended directory. Depending on the executing environment, the attacker may be able to specify arbitrary files to write to, leading to a wide variety of consequences, from code execution, XSS (CWE-79), or system crash."
+22,DX-159,1,"This script intends to read a user-supplied file from the current directory. The user inputs the relative path to the file and the script uses Python's os.path.join() function to combine the path to the current working directory with the provided path to the specified file. This results in an absolute path to the desired file. If the file does not exist when the script attempts to read it, an error is printed to the user.",NULL,NULL,NULL,NULL
+22,DX-159,2,NULL,Bad,Python,"```
+	 import os
+	 import sys
+	 def main():
+		 filename = sys.argv[1]
+		 path = os.path.join(os.getcwd(), filename)
+		 try:
+			 with open(path, 'r') as f:
+				 file_data = f.read()
+		 except FileNotFoundError as e:
+			 print(""Error - file not found"")
+	 main() 
+```",NULL
+22,DX-159,3,NULL,NULL,NULL,NULL,"However, if the user supplies an absolute path, the os.path.join() function will discard the path to the current working directory and use only the absolute path provided. For example, if the current working directory is /home/user/documents, but the user inputs /etc/passwd, os.path.join() will use only /etc/passwd, as it is considered an absolute path. In the above scenario, this would cause the script to access and read the /etc/passwd file."
+22,DX-159,4,NULL,Good,Python,"```
+	 import os
+	 import sys
+	 def main():
+		 filename = sys.argv[1]
+		 path = os.path.normpath(f""{os.getcwd()}{os.sep}{filename}"")
+		 if path.startswith(""/home/cwe/documents/""):
+			 try:
+				 with open(path, 'r') as f:
+					 file_data = f.read()
+			 except FileNotFoundError as e:
+				 print(""Error - file not found"")
+	 main() 
+```",NULL
+22,DX-159,5,NULL,NULL,NULL,NULL,"The constructed path string uses os.sep to add the appropriate separation character for the given operating system (e.g. '\' or '/') and the call to os.path.normpath() removes any additional slashes that may have been entered - this may occur particularly when using a Windows path. The path is checked against an expected directory (/home/cwe/documents); otherwise, an attacker could provide relative path sequences like "".."" to cause normpath() to generate paths that are outside the intended directory (CWE-23). By putting the pieces of the path string together in this fashion, the script avoids a call to os.path.join() and any potential issues that might arise if an absolute path is entered. With this version of the script, if the current working directory is /home/cwe/documents, and the user inputs /etc/passwd, the resulting path will be /home/cwe/documents/etc/passwd. The user is therefore contained within the current working directory as intended."

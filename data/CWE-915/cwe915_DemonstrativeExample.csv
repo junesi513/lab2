@@ -1,0 +1,45 @@
+cwe_id,example_id,entry_order,IntroText,Nature,Language,ExampleCode,BodyText
+915,DX-206,1,This function sets object attributes based on a dot-separated path.,NULL,NULL,NULL,NULL
+915,DX-206,2,NULL,Bad,JavaScript,"```
+	function setValueByPath (object, path, value) {
+		 const pathArray = path.split(""."");
+		 const attributeToSet = pathArray.pop();
+		 let objectToModify = object;
+		 for (const attr of pathArray) {
+			if (typeof objectToModify[attr] !== 'object') {
+				objectToModify[attr] = {};
+				 }
+			 objectToModify = objectToModify[attr];
+			 }
+		 objectToModify[attributeToSet] = value;
+		 return object;
+		 }
+```",NULL
+915,DX-206,3,NULL,NULL,NULL,NULL,"This function does not check if the attribute resolves to the object prototype. These codes can be used to add ""isAdmin: true"" to the object prototype."
+915,DX-206,4,NULL,Bad,JavaScript,"```
+	 setValueByPath({}, ""__proto__.isAdmin"", true)
+	 setValueByPath({}, ""constructor.prototype.isAdmin"", true)
+```",NULL
+915,DX-206,5,NULL,NULL,NULL,NULL,"By using a denylist of dangerous attributes, this weakness can be eliminated."
+915,DX-206,6,NULL,Good,JavaScript,"```
+	 function setValueByPath (object, path, value) {
+		 const pathArray = path.split(""."");
+		 const attributeToSet = pathArray.pop();
+		 let objectToModify = object;
+		 for (const attr of pathArray) {
+```
+// Ignore attributes which resolve to object prototype* 
+			 if (attr === ""__proto__"" || attr === ""constructor"" || attr === ""prototype"") {
+			
+			```
+				 continue;
+				 }
+			 if (typeof objectToModify[attr] !== ""object"") {
+				 objectToModify[attr] = {};
+				 }
+			 objectToModify = objectToModify[attr];
+			 }
+		 objectToModify[attributeToSet] = value;
+		 return object;
+		 }
+```",NULL

@@ -1,0 +1,119 @@
+cwe_id,example_id,entry_order,IntroText,Nature,Language,ExampleCode,BodyText
+770,DX-25,1,This code allocates a socket and forks each time it receives a new connection.,NULL,NULL,NULL,NULL
+770,DX-25,2,NULL,Bad,C,"```
+	sock=socket(AF_INET, SOCK_STREAM, 0);
+	while (1) {
+		newsock=accept(sock, ...);
+		printf(""A connection has been accepted\n"");
+		pid = fork();
+	}
+```",NULL
+770,DX-25,3,NULL,NULL,NULL,NULL,"The program does not track how many connections have been made, and it does not limit the number of connections. Because forking is a relatively expensive operation, an attacker would be able to cause the system to run out of CPU, processes, or memory by making a large number of connections. Alternatively, an attacker could consume all available connections, preventing others from accessing the system remotely."
+770,DX-50,1,"In the following example a server socket connection is used to accept a request to store data on the local file system using a specified filename. The method openSocketConnection establishes a server socket to accept requests from a client. When a client establishes a connection to this service the getNextMessage method is first used to retrieve from the socket the name of the file to store the data, the openFileToWrite method will validate the filename and open a file to write to on the local file system. The getNextMessage is then used within a while loop to continuously read data from the socket and output the data to the file until there is no longer any data from the socket.",NULL,NULL,NULL,NULL
+770,DX-50,2,NULL,Bad,C,"```
+	int writeDataFromSocketToFile(char *host, int port)
+	{
+			char filename[FILENAME_SIZE];
+			char buffer[BUFFER_SIZE];
+			int socket = openSocketConnection(host, port);
+			if (socket < 0) {
+				printf(""Unable to open socket connection"");
+				return(FAIL);
+			}
+			if (getNextMessage(socket, filename, FILENAME_SIZE) > 0) {
+					if (openFileToWrite(filename) > 0) {
+							while (getNextMessage(socket, buffer, BUFFER_SIZE) > 0){
+								if (!(writeToFile(buffer) > 0))
+									break;
+							}
+					}
+					closeFile();
+			}
+			closeSocket(socket);
+	}
+```",NULL
+770,DX-50,3,NULL,NULL,NULL,NULL,This example creates a situation where data can be dumped to a file on the local file system without any limits on the size of the file. This could potentially exhaust file or disk resources and/or limit other clients' ability to access the service.
+770,DX-51,1,"In the following example, the processMessage method receives a two dimensional character array containing the message to be processed. The two-dimensional character array contains the length of the message in the first character array and the message body in the second character array. The getMessageLength method retrieves the integer value of the length from the first character array. After validating that the message length is greater than zero, the body character array pointer points to the start of the second character array of the two-dimensional character array and memory is allocated for the new body character array.",NULL,NULL,NULL,NULL
+770,DX-51,2,NULL,Bad,C,"```
+```
+/* process message accepts a two-dimensional character array of the form [length][body] containing the message to be processed */* 
+	int processMessage(char **message)
+	{
+	```
+			char *body;
+			int length = getMessageLength(message[0]);
+			if (length > 0) {
+				body = &message[1][0];
+				processMessageBody(body);
+				return(SUCCESS);
+			}
+			else {
+				printf(""Unable to process message; invalid message length"");
+				return(FAIL);
+			}
+	}
+```",NULL
+770,DX-51,3,NULL,NULL,NULL,NULL,"This example creates a situation where the length of the body character array can be very large and will consume excessive memory, exhausting system resources. This can be avoided by restricting the length of the second character array with a maximum length check"
+770,DX-51,4,NULL,NULL,NULL,NULL,"Also, consider changing the type from 'int' to 'unsigned int', so that you are always guaranteed that the number is positive. This might not be possible if the protocol specifically requires allowing negative values, or if you cannot control the return value from getMessageLength(), but it could simplify the check to ensure the input is positive, and eliminate other errors such as signed-to-unsigned conversion errors (CWE-195) that may occur elsewhere in the code."
+770,DX-51,5,NULL,Good,C,"```
+	unsigned int length = getMessageLength(message[0]);
+	if ((length > 0) && (length < MAX_LENGTH)) {...}
+```",NULL
+770,DX-52,1,"In the following example, a server object creates a server socket and accepts client connections to the socket. For every client connection to the socket a separate thread object is generated using the ClientSocketThread class that handles request made by the client through the socket.",NULL,NULL,NULL,NULL
+770,DX-52,2,NULL,Bad,Java,"```
+	public void acceptConnections() {
+			try {
+				ServerSocket serverSocket = new ServerSocket(SERVER_PORT);
+				int counter = 0;
+				boolean hasConnections = true;
+				while (hasConnections) {
+					Socket client = serverSocket.accept();
+					Thread t = new Thread(new ClientSocketThread(client));
+					t.setName(client.getInetAddress().getHostName() + "":"" + counter++);
+					t.start();
+				}
+				serverSocket.close();
+			} catch (IOException ex) {...}
+	}
+```",NULL
+770,DX-52,3,NULL,NULL,NULL,NULL,In this example there is no limit to the number of client connections and client threads that are created. Allowing an unlimited number of client connections and threads could potentially overwhelm the system and system resources.
+770,DX-52,4,NULL,NULL,NULL,NULL,The server should limit the number of client connections and the client threads that are created. This can be easily done by creating a thread pool object that limits the number of threads that are generated.
+770,DX-52,5,NULL,Good,Java,"```
+	public static final int SERVER_PORT = 4444;
+	public static final int MAX_CONNECTIONS = 10;
+	...
+	public void acceptConnections() {
+			try {
+				ServerSocket serverSocket = new ServerSocket(SERVER_PORT);
+				int counter = 0;
+				boolean hasConnections = true;
+				while (hasConnections) {
+					hasConnections = checkForMoreConnections();
+					Socket client = serverSocket.accept();
+					Thread t = new Thread(new ClientSocketThread(client));
+					t.setName(client.getInetAddress().getHostName() + "":"" + counter++);
+					ExecutorService pool = Executors.newFixedThreadPool(MAX_CONNECTIONS);
+					pool.execute(t);
+				}
+				serverSocket.close();
+			} catch (IOException ex) {...}
+	}
+```",NULL
+770,GEN-5,1,"An unnamed web site allowed a user to purchase tickets for an event. A menu option allowed the user to purchase up to 10 tickets, but the back end did not restrict the actual number of tickets that could be purchased.",NULL,NULL,NULL,NULL
+770,GEN-5,2,NULL,NULL,NULL,NULL,NULL
+770,GEN-6,1,"Here the problem is that every time a connection is made, more memory is allocated. So if one just opened up more and more connections, eventually the machine would run out of memory.",NULL,NULL,NULL,NULL
+770,GEN-6,2,NULL,Bad,C,"```
+	bar connection() {
+		foo = malloc(1024);
+		return foo;
+	}
+	endConnection(bar foo) {
+		free(foo);
+	}
+	int main() {
+		while(1) {
+			foo=connection();
+		}
+		endConnection(foo)
+	}
+```",NULL

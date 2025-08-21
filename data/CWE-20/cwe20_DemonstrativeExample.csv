@@ -1,0 +1,83 @@
+cwe_id,example_id,entry_order,IntroText,Nature,Language,ExampleCode,BodyText
+20,DX-135,1,This example demonstrates a shopping interaction in which the user is free to specify the quantity of items to be purchased and a total is calculated.,NULL,NULL,NULL,NULL
+20,DX-135,2,NULL,Bad,Java,"```
+	...
+	public static final double price = 20.00;
+	int quantity = currentUser.getAttribute(""quantity"");
+	double total = price * quantity;
+	chargeUser(total);
+	...
+```",NULL
+20,DX-135,3,NULL,NULL,NULL,NULL,"The user has no control over the price variable, however the code does not prevent a negative value from being specified for quantity. If an attacker were to provide a negative value, then the user would have their account credited instead of debited."
+20,DX-136,1,This example asks the user for a height and width of an m X n game board with a maximum dimension of 100 squares.,NULL,NULL,NULL,NULL
+20,DX-136,2,NULL,Bad,C,"```
+	...
+	#define MAX_DIM 100
+	...
+```
+/* board dimensions */* 
+	
+	int m,n, error;
+	board_square_t *board;
+	printf(""Please specify the board height: \n"");
+	error = scanf(""%d"", &m);
+	if ( EOF == error ){
+	```
+		die(""No integer passed: Die evil hacker!\n"");
+	}
+	printf(""Please specify the board width: \n"");
+	error = scanf(""%d"", &n);
+	if ( EOF == error ){
+		die(""No integer passed: Die evil hacker!\n"");
+	}
+	if ( m > MAX_DIM || n > MAX_DIM ) {
+		die(""Value too large: Die evil hacker!\n"");
+	}
+	board = (board_square_t*) malloc( m * n * sizeof(board_square_t));
+	...
+```",NULL
+20,DX-136,3,NULL,NULL,NULL,NULL,"While this code checks to make sure the user cannot specify large, positive integers and consume too much memory, it does not check for negative values supplied by the user. As a result, an attacker can perform a resource consumption (CWE-400) attack against this program by specifying two, large negative values that will not overflow, resulting in a very large memory allocation (CWE-789) and possibly a system crash. Alternatively, an attacker can provide very large negative values which will cause an integer overflow (CWE-190) and unexpected behavior will follow depending on how the values are treated in the remainder of the program."
+20,GEN-3,1,The following example shows a PHP application in which the programmer attempts to display a user's birthday and homepage.,NULL,NULL,NULL,NULL
+20,GEN-3,2,NULL,Bad,PHP,"```
+	$birthday = $_GET['birthday'];
+	$homepage = $_GET['homepage'];
+	echo ""Birthday: $birthday<br>Homepage: <a href=$homepage>click here</a>""
+```",NULL
+20,GEN-3,3,NULL,NULL,NULL,NULL,"The programmer intended for $birthday to be in a date format and $homepage to be a valid URL. However, since the values are derived from an HTTP request, if an attacker can trick a victim into clicking a crafted URL with <script> tags providing the values for birthday and / or homepage, then the script will run on the client's browser when the web server echoes the content. Notice that even if the programmer were to defend the $birthday variable by restricting input to integers and dashes, it would still be possible for an attacker to provide a string of the form:"
+20,GEN-3,4,NULL,Attack,NULL,"```
+	2009-01-09--
+```",NULL
+20,GEN-3,5,NULL,NULL,NULL,NULL,"If this data were used in a SQL statement, it would treat the remainder of the statement as a comment. The comment could disable other security-related logic in the statement. In this case, encoding combined with input validation would be a more useful protection mechanism."
+20,GEN-3,6,NULL,NULL,NULL,NULL,"Furthermore, an XSS (CWE-79) attack or SQL injection (CWE-89) are just a few of the potential consequences when input validation is not used. Depending on the context of the code, CRLF Injection (CWE-93), Argument Injection (CWE-88), or Command Injection (CWE-77) may also be possible."
+20,DX-34,1,The following example takes a user-supplied value to allocate an array of objects and then operates on the array.,NULL,NULL,NULL,NULL
+20,DX-34,2,NULL,Bad,Java,"```
+	private void buildList ( int untrustedListSize ){
+		if ( 0 > untrustedListSize ){
+			die(""Negative value supplied for list size, die evil hacker!"");
+		}
+		Widget[] list = new Widget [ untrustedListSize ];
+		list[0] = new Widget();
+	}
+```",NULL
+20,DX-34,3,NULL,NULL,NULL,NULL,"This example attempts to build a list from a user-specified value, and even checks to ensure a non-negative value is supplied. If, however, a 0 value is provided, the code will build an array of size 0 and then try to store a new Widget in the first location, causing an exception to be thrown."
+20,DX-110,1,This Android application has registered to handle a URL when sent an intent:,NULL,NULL,NULL,NULL
+20,DX-110,2,NULL,Bad,Java,"```
+```
+...* 
+	IntentFilter filter = new IntentFilter(""com.example.URLHandler.openURL"");
+	MyReceiver receiver = new MyReceiver();
+	registerReceiver(receiver, filter);
+	
+	 *...* 
+	
+	public class UrlHandlerReceiver extends BroadcastReceiver {
+	```
+			@Override
+			public void onReceive(Context context, Intent intent) {
+					if(""com.example.URLHandler.openURL"".equals(intent.getAction())) {
+						String URL = intent.getStringExtra(""URLToOpen"");
+						int length = URL.length();
+```
+...* 
+					}}}",NULL
+20,DX-110,3,NULL,NULL,NULL,NULL,"The application assumes the URL will always be included in the intent. When the URL is not present, the call to getStringExtra() will return null, thus causing a null pointer exception when length() is called."

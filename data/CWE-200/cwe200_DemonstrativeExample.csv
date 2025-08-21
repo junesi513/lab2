@@ -1,0 +1,114 @@
+cwe_id,example_id,entry_order,IntroText,Nature,Language,ExampleCode,BodyText
+200,DX-38,1,The following code checks validity of the supplied username and password and notifies the user of a successful or failed login.,NULL,NULL,NULL,NULL
+200,DX-38,2,NULL,Bad,Perl,"```
+	my $username=param('username'); 
+	my $password=param('password'); 
+	if (IsValidUsername($username) == 1) 
+	{ 
+		if (IsValidPassword($username, $password) == 1) 
+		{ 
+			print ""Login Successful""; 
+		} 
+		else 
+		{ 
+			print ""Login Failed - incorrect password""; 
+		} 
+	} 
+	else 
+	{ 
+		print ""Login Failed - unknown username""; 
+	} 
+```",NULL
+200,DX-38,3,NULL,NULL,NULL,NULL,"In the above code, there are different messages for when an incorrect username is supplied, versus when the username is correct but the password is wrong. This difference enables a potential attacker to understand the state of the login function, and could allow an attacker to discover a valid username by trying different values until the incorrect password message is returned. In essence, this makes it easier for an attacker to obtain half of the necessary authentication credentials."
+200,DX-38,4,NULL,NULL,NULL,NULL,"While this type of information may be helpful to a user, it is also useful to a potential attacker. In the above example, the message for both failed cases should be the same, such as:"
+200,DX-38,5,NULL,Result,NULL,"```
+	""Login Failed - incorrect username or password""
+```",NULL
+200,DX-118,1,"This code tries to open a database connection, and prints any exceptions that occur.",NULL,NULL,NULL,NULL
+200,DX-118,2,NULL,Bad,PHP,"```
+	try {
+		openDbConnection();
+	}
+```
+//print exception message that includes exception message and configuration file location* 
+	catch (Exception $e) {
+	```
+		echo 'Caught exception: ', $e->getMessage(), '\n';
+		echo 'Check credentials in config file at: ', $Mysql_config_location, '\n';
+	}
+```",NULL
+200,DX-118,3,NULL,NULL,NULL,NULL,"If an exception occurs, the printed message exposes the location of the configuration file the script is using. An attacker can use this information to target the configuration file (perhaps exploiting a Path Traversal weakness). If the file can be read, the attacker could gain credentials for accessing the database. The attacker may also be able to replace the file with a malicious one, causing the application to use an arbitrary database."
+200,DX-119,1,"In the example below, the method getUserBankAccount retrieves a bank account object from a database using the supplied username and account number to query the database. If an SQLException is raised when querying the database, an error message is created and output to a log file.",NULL,NULL,NULL,NULL
+200,DX-119,2,NULL,Bad,Java,"```
+	public BankAccount getUserBankAccount(String username, String accountNumber) {
+			BankAccount userAccount = null;
+			String query = null;
+			try {
+				if (isAuthorizedUser(username)) {
+					query = ""SELECT * FROM accounts WHERE owner = ""
+					+ username + "" AND accountID = "" + accountNumber;
+					DatabaseManager dbManager = new DatabaseManager();
+					Connection conn = dbManager.getConnection();
+					Statement stmt = conn.createStatement();
+					ResultSet queryResult = stmt.executeQuery(query);
+					userAccount = (BankAccount)queryResult.getObject(accountNumber);
+				}
+			} catch (SQLException ex) {
+				String logMessage = ""Unable to retrieve account information from database,\nquery: "" + query;
+				Logger.getLogger(BankManager.class.getName()).log(Level.SEVERE, logMessage, ex);
+			}
+			return userAccount;
+	}
+```",NULL
+200,DX-119,3,NULL,NULL,NULL,NULL,"The error message that is created includes information about the database query that may contain sensitive information about the database or query logic. In this case, the error message will expose the table name and column names used in the database. This data could be used to simplify other attacks, such as SQL injection (CWE-89) to directly access the database."
+200,DX-120,1,This code stores location information about the current user:,NULL,NULL,NULL,NULL
+200,DX-120,2,NULL,Bad,Java,"```
+	locationClient = new LocationClient(this, this, this);
+	locationClient.connect();
+	currentUser.setLocation(locationClient.getLastLocation());
+```
+...* 
+	
+	catch (Exception e) {
+	```
+		AlertDialog.Builder builder = new AlertDialog.Builder(this);
+		builder.setMessage(""Sorry, this application has experienced an error."");
+		AlertDialog alert = builder.create();
+		alert.show();
+		Log.e(""ExampleActivity"", ""Caught exception: "" + e + "" While on User:"" + User.toString());
+	}
+```",NULL
+200,DX-120,3,NULL,NULL,NULL,NULL,"When the application encounters an exception it will write the user object to the log. Because the user object contains location information, the user's location is also written to the log."
+200,DX-129,1,The following is an actual MySQL error statement:,NULL,NULL,NULL,NULL
+200,DX-129,2,NULL,Result,SQL,"```
+	Warning: mysql_pconnect(): Access denied for user: 'root@localhost' (Using password: N1nj4) in /usr/local/www/wi-data/includes/database.inc on line 4
+```",NULL
+200,DX-129,3,NULL,NULL,NULL,NULL,The error clearly exposes the database credentials.
+200,DX-130,1,This code displays some information on a web page.,NULL,NULL,NULL,NULL
+200,DX-130,2,NULL,Bad,JSP,"```
+	Social Security Number: <%= ssn %></br>Credit Card Number: <%= ccn %>
+```",NULL
+200,DX-130,3,NULL,NULL,NULL,NULL,"The code displays a user's credit card and social security numbers, even though they aren't absolutely necessary."
+200,DX-131,1,The following program changes its behavior based on a debug flag.,NULL,NULL,NULL,NULL
+200,DX-131,2,NULL,Bad,JSP,"```
+	<% if (Boolean.getBoolean(""debugEnabled"")) {
+			%>
+			User account number: <%= acctNo %>
+			<%
+			} %>
+```",NULL
+200,DX-131,3,NULL,NULL,NULL,NULL,"The code writes sensitive debug information to the client browser if the ""debugEnabled"" flag is set to true ."
+200,DX-111,1,This code uses location to determine the user's current US State location.,NULL,NULL,NULL,NULL
+200,DX-111,2,NULL,NULL,NULL,NULL,First the application must declare that it requires the ACCESS_FINE_LOCATION permission in the application's manifest.xml:
+200,DX-111,3,NULL,Bad,XML,"```
+	<uses-permission android:name=""android.permission.ACCESS_FINE_LOCATION""/>
+```",NULL
+200,DX-111,4,NULL,NULL,NULL,NULL,"During execution, a call to getLastLocation() will return a location based on the application's location permissions. In this case the application has permission for the most accurate location possible:"
+200,DX-111,5,NULL,Bad,Java,"```
+	locationClient = new LocationClient(this, this, this);
+	locationClient.connect();
+	Location userCurrLocation;
+	userCurrLocation = locationClient.getLastLocation();
+	deriveStateFromCoords(userCurrLocation);
+```",NULL
+200,DX-111,6,NULL,NULL,NULL,NULL,"While the application needs this information, it does not need to use the ACCESS_FINE_LOCATION permission, as the ACCESS_COARSE_LOCATION permission will be sufficient to identify which US state the user is in."

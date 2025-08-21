@@ -1,0 +1,48 @@
+cwe_id,example_id,entry_order,IntroText,Nature,Language,ExampleCode,BodyText
+691,DX-24,1,The following function attempts to acquire a lock in order to perform operations on a shared resource.,NULL,NULL,NULL,NULL
+691,DX-24,2,NULL,Bad,C,"```
+	void f(pthread_mutex_t *mutex) {
+			pthread_mutex_lock(mutex);
+```
+/* access shared resource */* 
+			
+			
+			pthread_mutex_unlock(mutex);}",NULL
+691,DX-24,3,NULL,NULL,NULL,NULL,"However, the code does not check the value returned by pthread_mutex_lock() for errors. If pthread_mutex_lock() cannot acquire the mutex for any reason, the function may introduce a race condition into the program and result in undefined behavior."
+691,DX-24,4,NULL,NULL,NULL,NULL,"In order to avoid data races, correctly written programs must check the result of thread synchronization functions and appropriately handle all errors, either by attempting to recover from them or reporting them to higher levels."
+691,DX-24,5,NULL,Good,C,"```
+	int f(pthread_mutex_t *mutex) {
+			int result;
+			result = pthread_mutex_lock(mutex);
+			if (0 != result)
+				return result;
+```
+/* access shared resource */* 
+			
+			
+			return pthread_mutex_unlock(mutex);}",NULL
+691,DX-181,1,"In this example, the programmer has indented the statements to call Do_X() and Do_Y(), as if the intention is that these functions are only called when the condition is true. However, because there are no braces to signify the block, Do_Y() will always be executed, even if the condition is false.",NULL,NULL,NULL,NULL
+691,DX-181,2,NULL,Bad,C,"```
+	if (condition==true)
+		Do_X();
+		Do_Y();
+```",NULL
+691,DX-181,3,NULL,NULL,NULL,NULL,"This might not be what the programmer intended. When the condition is critical for security, such as in making a security decision or detecting a critical error, this may produce a vulnerability."
+691,DX-157,1,This function prints the contents of a specified file requested by a user.,NULL,NULL,NULL,NULL
+691,DX-157,2,NULL,Bad,PHP,"```
+	function printFile($username,$filename){
+```
+//read file into string* 
+			$file = file_get_contents($filename);
+			if ($file && isOwnerOf($username,$filename)){
+			```
+				echo $file;
+				return true;
+			}
+			else{
+				echo 'You are not authorized to view this file';
+			}
+			return false;
+	}
+```",NULL
+691,DX-157,3,NULL,NULL,NULL,NULL,"This code first reads a specified file into memory, then prints the file if the user is authorized to see its contents. The read of the file into memory may be resource intensive and is unnecessary if the user is not allowed to see the file anyway."

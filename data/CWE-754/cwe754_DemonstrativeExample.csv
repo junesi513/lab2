@@ -1,0 +1,153 @@
+cwe_id,example_id,entry_order,IntroText,Nature,Language,ExampleCode,BodyText
+754,DX-7,1,Consider the following code segment:,NULL,NULL,NULL,NULL
+754,DX-7,2,NULL,Bad,C,"```
+	char buf[10], cp_buf[10];
+	fgets(buf, 10, stdin);
+	strcpy(cp_buf, buf);
+```",NULL
+754,DX-7,3,NULL,NULL,NULL,NULL,"The programmer expects that when fgets() returns, buf will contain a null-terminated string of length 9 or less. But if an I/O error occurs, fgets() will not null-terminate buf. Furthermore, if the end of the file is reached before any characters are read, fgets() returns without writing anything to buf. In both of these situations, fgets() signals that something unusual has happened by returning NULL, but in this code, the warning will not be noticed. The lack of a null terminator in buf can result in a buffer overflow in the subsequent call to strcpy()."
+754,DX-8,1,The following code does not check to see if memory allocation succeeded before attempting to use the pointer returned by malloc().,NULL,NULL,NULL,NULL
+754,DX-8,2,NULL,Bad,C,"```
+	buf = (char*) malloc(req_size);
+	strncpy(buf, xfer, req_size);
+```",NULL
+754,DX-8,3,NULL,NULL,NULL,NULL,"The traditional defense of this coding error is: ""If my program runs out of memory, it will fail. It doesn't matter whether I handle the error or simply allow the program to die with a segmentation fault when it tries to dereference the null pointer."" This argument ignores three important considerations:"
+754,DX-8,4,NULL,NULL,NULL,NULL,"- Depending upon the type and size of the application, it may be possible to free memory that is being used elsewhere so that execution can continue. - It is impossible for the program to perform a graceful exit if required. If the program is performing an atomic operation, it can leave the system in an inconsistent state. - The programmer has lost the opportunity to record diagnostic information. Did the call to malloc() fail because req_size was too large or because there were too many requests being handled at the same time? Or was it caused by a memory leak that has built up over time? Without handling the error, there is no way to know."
+754,DX-9,1,The following examples read a file into a byte array.,NULL,NULL,NULL,NULL
+754,DX-9,2,NULL,Bad,C#,"```
+	char[] byteArray = new char[1024];
+	for (IEnumerator i=users.GetEnumerator(); i.MoveNext() ;i.Current()) {
+		String userName = (String) i.Current();
+		String pFileName = PFILE_ROOT + ""/"" + userName;
+		StreamReader sr = new StreamReader(pFileName);
+		sr.Read(byteArray,0,1024);//the file is always 1k bytes
+		sr.Close();
+		processPFile(userName, byteArray);
+	}
+```",NULL
+754,DX-9,3,NULL,Bad,Java,"```
+	FileInputStream fis;
+	byte[] byteArray = new byte[1024];
+	for (Iterator i=users.iterator(); i.hasNext();) {
+			String userName = (String) i.next();
+			String pFileName = PFILE_ROOT + ""/"" + userName;
+			FileInputStream fis = new FileInputStream(pFileName);
+			fis.read(byteArray); // the file is always 1k bytes
+			fis.close();
+			processPFile(userName, byteArray);
+```",NULL
+754,DX-9,4,NULL,NULL,NULL,NULL,"The code loops through a set of users, reading a private data file for each user. The programmer assumes that the files are always 1 kilobyte in size and therefore ignores the return value from Read(). If an attacker can create a smaller file, the program will recycle the remainder of the data from the previous user and treat it as though it belongs to the attacker."
+754,DX-10,1,"The following code does not check to see if the string returned by getParameter() is null before calling the member function compareTo(), potentially causing a NULL dereference.",NULL,NULL,NULL,NULL
+754,DX-10,2,NULL,Bad,Java,"```
+	String itemName = request.getParameter(ITEM_NAME);
+	if (itemName.compareTo(IMPORTANT_ITEM) == 0) {
+		...
+	}
+	...
+```",NULL
+754,DX-10,3,NULL,NULL,NULL,NULL,"The following code does not check to see if the string returned by the Item property is null before calling the member function Equals(), potentially causing a NULL dereference."
+754,DX-10,4,NULL,Bad,Java,"```
+	String itemName = request.Item(ITEM_NAME);
+	if (itemName.Equals(IMPORTANT_ITEM)) {
+		...
+	}
+	...
+```",NULL
+754,DX-10,5,NULL,NULL,NULL,NULL,"The traditional defense of this coding error is: ""I know the requested value will always exist because.... If it does not exist, the program cannot perform the desired behavior so it doesn't matter whether I handle the error or simply allow the program to die dereferencing a null value."" But attackers are skilled at finding unexpected paths through programs, particularly when exceptions are involved."
+754,DX-11,1,The following code shows a system property that is set to null and later dereferenced by a programmer who mistakenly assumes it will always be defined.,NULL,NULL,NULL,NULL
+754,DX-11,2,NULL,Bad,Java,"```
+	System.clearProperty(""os.name"");
+	...
+	String os = System.getProperty(""os.name"");
+	if (os.equalsIgnoreCase(""Windows 95"")) System.out.println(""Not supported"");
+```",NULL
+754,DX-11,3,NULL,NULL,NULL,NULL,"The traditional defense of this coding error is: ""I know the requested value will always exist because.... If it does not exist, the program cannot perform the desired behavior so it doesn't matter whether I handle the error or simply allow the program to die dereferencing a null value."" But attackers are skilled at finding unexpected paths through programs, particularly when exceptions are involved."
+754,DX-12,1,The following VB.NET code does not check to make sure that it has read 50 bytes from myfile.txt. This can cause DoDangerousOperation() to operate on an unexpected value.,NULL,NULL,NULL,NULL
+754,DX-12,2,NULL,Bad,C#,"```
+	Dim MyFile As New FileStream(""myfile.txt"", FileMode.Open, FileAccess.Read, FileShare.Read)
+	Dim MyArray(50) As Byte
+	MyFile.Read(MyArray, 0, 50)
+	DoDangerousOperation(MyArray(20))
+```",NULL
+754,DX-12,3,NULL,NULL,NULL,NULL,"In .NET, it is not uncommon for programmers to misunderstand Read() and related methods that are part of many System.IO classes. The stream and reader classes do not consider it to be unusual or exceptional if only a small amount of data becomes available. These classes simply add the small amount of data to the return buffer, and set the return value to the number of bytes or characters read. There is no guarantee that the amount of data returned is equal to the amount of data requested."
+754,DX-1,1,"This example takes an IP address from a user, verifies that it is well formed and then looks up the hostname and copies it into a buffer.",NULL,NULL,NULL,NULL
+754,DX-1,2,NULL,Bad,C,"```
+	void host_lookup(char *user_supplied_addr){
+			struct hostent *hp;
+			in_addr_t *addr;
+			char hostname[64];
+			in_addr_t inet_addr(const char *cp);
+```
+/*routine that ensures user_supplied_addr is in the right format for conversion */* 
+			
+			validate_addr_form(user_supplied_addr);
+			addr = inet_addr(user_supplied_addr);
+			hp = gethostbyaddr( addr, sizeof(struct in_addr), AF_INET);
+			strcpy(hostname, hp->h_name);}",NULL
+754,DX-1,3,NULL,NULL,NULL,NULL,"If an attacker provides an address that appears to be well-formed, but the address does not resolve to a hostname, then the call to gethostbyaddr() will return NULL. Since the code does not check the return value from gethostbyaddr (CWE-252), a NULL pointer dereference (CWE-476) would then occur in the call to strcpy()."
+754,DX-1,4,NULL,NULL,NULL,NULL,Note that this code is also vulnerable to a buffer overflow (CWE-119).
+754,GEN-8,1,In the following C/C++ example the method outputStringToFile opens a file in the local filesystem and outputs a string to the file. The input parameters output and filename contain the string to output to the file and the name of the file respectively.,NULL,NULL,NULL,NULL
+754,GEN-8,2,NULL,Bad,C++,"```
+	int outputStringToFile(char *output, char *filename) {
+			openFileToWrite(filename);
+			writeToFile(output);
+			closeFile(filename);
+	}
+```",NULL
+754,GEN-8,3,NULL,NULL,NULL,NULL,"However, this code does not check the return values of the methods openFileToWrite, writeToFile, closeFile to verify that the file was properly opened and closed and that the string was successfully written to the file. The return values for these methods should be checked to determine if the method was successful and allow for detection of errors or unexpected conditions as in the following example."
+754,GEN-8,4,NULL,Good,C++,"```
+	int outputStringToFile(char *output, char *filename) {
+			int isOutput = SUCCESS;
+			int isOpen = openFileToWrite(filename);
+			if (isOpen == FAIL) {
+				printf(""Unable to open file %s"", filename);
+				isOutput = FAIL;
+			}
+			else {
+					int isWrite = writeToFile(output);
+					if (isWrite == FAIL) {
+						printf(""Unable to write to file %s"", filename);
+						isOutput = FAIL;
+					}
+					int isClose = closeFile(filename);
+					if (isClose == FAIL)
+						isOutput = FAIL;
+			}
+			return isOutput;
+	}
+```",NULL
+754,GEN-9,1,"In the following Java example the method readFromFile uses a FileReader object to read the contents of a file. The FileReader object is created using the File object readFile, the readFile object is initialized using the setInputFile method. The setInputFile method should be called before calling the readFromFile method.",NULL,NULL,NULL,NULL
+754,GEN-9,2,NULL,Bad,Java,"```
+	private File readFile = null;
+	public void setInputFile(String inputFile) {
+```
+// create readFile File object from string containing name of file* 
+			}
+	
+	public void readFromFile() {
+	```
+			try {
+					reader = new FileReader(readFile);
+```
+// read input file* 
+					} catch (FileNotFoundException ex) {...}}",NULL
+754,GEN-9,3,NULL,NULL,NULL,NULL,"However, the readFromFile method does not check to see if the readFile object is null, i.e. has not been initialized, before creating the FileReader object and reading from the input file. The readFromFile method should verify whether the readFile object is null and output an error message and raise an exception if the readFile object is null, as in the following code."
+754,GEN-9,4,NULL,Good,Java,"```
+	private File readFile = null;
+	public void setInputFile(String inputFile) {
+```
+// create readFile File object from string containing name of file* 
+			}
+	
+	public void readFromFile() {
+	```
+			try {
+					if (readFile == null) {
+						System.err.println(""Input file has not been set, call setInputFile method before calling openInputFile"");
+						throw NullPointerException;
+					}
+					reader = new FileReader(readFile);
+```
+// read input file* 
+					} catch (FileNotFoundException ex) {...}
+			catch (NullPointerException ex) {...}}",NULL

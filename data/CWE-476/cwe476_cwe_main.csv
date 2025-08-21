@@ -1,0 +1,2 @@
+idx,ID,Name,Description,ExtendedDescription
+0,476,NULL Pointer Dereference,The product dereferences a pointer that it expects to be valid but is NULL.,

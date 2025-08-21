@@ -1,0 +1,7 @@
+[
+    {
+        "example_id": "DX-153",
+        "fixed_code": "{\n  \"vendor_firmware\": {\n    \"signed\": true,\n    \"image\": \"firmware.img\",\n    \"signature\": \"firmware.img.sig\"\n  }\n}",
+        "description": "The vulnerability in the original code was the lack of signed firmware images. Unsigned firmware images could allow attackers to modify the firmware and upload it without detection leading to malicious behavior and potential safety risks. The corrected code addresses this issue by ensuring that the firmware images are signed. A signature (represented here as 'firmware.img.sig') is attached to the 'firmware.img' data, creating a 'signed' boolean. This way, the data and its integrity can be verified, reducing the risk and potential implications caused by this security vulnerability."
+    }
+]

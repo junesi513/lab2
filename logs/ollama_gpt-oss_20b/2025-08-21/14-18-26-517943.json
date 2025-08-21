@@ -1,0 +1,86 @@
+{
+  "timestamp": "2025-08-21T14:18:26.517963",
+  "model": "ollama:gpt-oss:20b",
+  "request": {
+    "task": "keyword_analysis",
+    "code_file": "/home/ace4_sijune/vul4j_test/VUL4J-1/VUL4J/vulnerable/ObjectArrayCodec.java"
+  },
+  "response": {
+    "vulnerability_keywords": [
+      {
+        "vulnerability": "Unlimited Array Size During Deserialization",
+        "keywords": [
+          "uncontrolled array size",
+          "heap memory",
+          "OutOfMemoryError",
+          "DoS",
+          "deserialization",
+          "array allocation",
+          "size check",
+          "maximum array size",
+          "input validation"
+        ],
+        "cwe_id": "CWE-789"
+      },
+      {
+        "vulnerability": "Unbounded Recursive Deserialization",
+        "keywords": [
+          "unbounded recursion",
+          "StackOverflowError",
+          "recursive depth",
+          "recursion limit",
+          "nested JSON arrays",
+          "iterative algorithm",
+          "recursion depth counter",
+          "deserialization"
+        ],
+        "cwe_id": "CWE-674"
+      },
+      {
+        "vulnerability": "Generic Deserialization Allows Arbitrary Class Instantiation",
+        "keywords": [
+          "arbitrary class instantiation",
+          "remote code execution",
+          "type validation",
+          "whitelist",
+          "component type",
+          "Array.newInstance",
+          "TypeUtils.cast",
+          "malicious constructor",
+          "deserialization"
+        ],
+        "cwe_id": "CWE-502"
+      },
+      {
+        "vulnerability": "Potential Misuse of LITERAL_STRING Branch",
+        "keywords": [
+          "raw byte array",
+          "string token",
+          "executables",
+          "code execution risk",
+          "type validation",
+          "byte array handling",
+          "LITERAL_STRING",
+          "String",
+          "byte[]",
+          "deserialization"
+        ],
+        "cwe_id": "CWE-704"
+      },
+      {
+        "vulnerability": "Missing Null-Check Before Casting to Object Array",
+        "keywords": [
+          "ClassCastException",
+          "DoS",
+          "null-check",
+          "instanceof",
+          "object array",
+          "serializer",
+          "type check",
+          "untrusted data"
+        ],
+        "cwe_id": "CWE-704"
+      }
+    ]
+  }
+}
