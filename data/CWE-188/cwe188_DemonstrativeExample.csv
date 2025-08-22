@@ -1,0 +1,10 @@
+cwe_id,example_id,entry_order,IntroText,Nature,Language,ExampleCode,BodyText
+188,DX-216,1,"In this example function, the memory address of variable b is derived by adding 1 to the address of variable a. This derived address is then used to assign the value 0 to b.",NULL,NULL,NULL,NULL
+188,DX-216,2,NULL,Bad,C,"```
+	void example() {
+		char a;
+		char b;
+		*(&a + 1) = 0;
+	}
+```",NULL
+188,DX-216,3,NULL,NULL,NULL,NULL,"Here, b may not be one byte past a. It may be one byte in front of a. Or, they may have three bytes between them because they are aligned on 32-bit boundaries."

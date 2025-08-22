@@ -65,7 +65,17 @@ You will be given:
 3.  **Target CWE Description**: The official description of a CWE that is potentially related to the source.
 4.  **Relationship Type**: The nature of the link between the source and target CWE (e.g., 'ChildOf', 'CanAlsoBe').
 
-Analyze all information and determine if, in the context of the *original vulnerability*, the stated relationship is logically valid. For example, does the nature of the original vulnerability mean that the source CWE could indeed lead to or be a type of the target CWE?
+To guide your analysis, use the following definitions for relationship types:
+- **ParentOf**: Use this to state that a vulnerability is a more abstract, broader category for another.
+  - *Example*: CWE-20 (Improper Input Validation) is a ParentOf CWE-1284 (Improper Validation of Specified Quantity in Input).
+- **ChildOf**: Use this to show that a vulnerability is a specific example or subtype of another.
+  - *Example*: CWE-1284 is a ChildOf CWE-20.
+- **PeerOf**: Use this to indicate that two vulnerabilities are on a similar level and are conceptually related or similar.
+  - *Example*: CWE-20 is a PeerOf CWE-345 (Insufficient Verification of Data Authenticity).
+- **CanPrecede**: Use this to explain that one vulnerability can be a prerequisite or lead to another. This is for showing a potential attack chain.
+  - *Example*: CWE-20 can precede CWE-74 (Improper Neutralization of Special Elements in Output used by a Downstream Component).
+
+Analyze all information and determine if, in the context of the *original vulnerability*, the stated relationship is logically valid. In addition to your validation, provide a `confidence` score between 0.0 and 1.0 representing your certainty. A score of 1.0 means you are absolutely certain the relationship is valid in this context, while 0.0 means it is not valid at all.
 
 Your output MUST be a JSON object that strictly follows this format.
 {format_instructions}
@@ -82,15 +92,32 @@ Your output MUST be a JSON object that strictly follows this format.
     `{target_cwe_description}`
 
 *   **Stated Relationship (`{relationship_type}`):** Does the Source CWE have a `{relationship_type}` relationship with the Target CWE that is relevant to the original vulnerability?
-""",
+    """,
     "fifth_request_attack_scenario": """As a security expert, your task is to synthesize information from multiple analysis steps to create plausible attack scenarios for the given source code.
 
 You are provided with:
 1.  **Source Code**: The original code being analyzed.
 2.  **Initial Vulnerability Analysis**: A list of potential vulnerabilities identified in the code.
-3.  **Validated CWE Relationships**: A knowledge graph showing how different types of weaknesses (CWEs) can be chained together.
+3.  **Validated Attack Chains**: A list of validated, multi-step CWE relationship chains that represent potential attack paths (e.g., "CWE-20 -> CWE-74 -> CWE-123").
 
-Based on all this information, describe one or more detailed attack scenarios. Each scenario should explain how an attacker could exploit one or more of the identified vulnerabilities, potentially chaining them together as suggested by the CWE relationships, to compromise the application.
+Based on all this information, describe one or more detailed attack scenarios. Each scenario must include:
+- A title and a step-by-step description.
+- The specific CWE relationship chain that enables the scenario (e.g., "CWE-20 -> CWE-74 -> CWE-123").
+- A `confidence` score and `severity` rating based on the guidelines below.
+
+**CONFIDENCE SCORING:**
+- 0.9-1.0: Certain exploit path identified, tested if possible
+- 0.8-0.9: Clear vulnerability pattern with known exploitation methods
+- 0.7-0.8: Suspicious pattern requiring specific conditions to exploit
+- Below 0.7: Don't report (too speculative)
+
+**SEVERITY GUIDELINES:**
+- **HIGH**: Directly exploitable vulnerabilities leading to RCE, data breach, or authentication bypass
+- **MEDIUM**: Vulnerabilities requiring specific conditions but with significant impact
+- **LOW**: Defense-in-depth issues or lower-impact vulnerabilities
+
+**FINAL REMINDER:**
+Focus on HIGH and MEDIUM findings only. Better to miss some theoretical issues than flood the report with false positives. Each finding should be something a security engineer would confidently raise in a PR review.
 
 Your output MUST be a JSON object that strictly follows this format.
 {format_instructions}

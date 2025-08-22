@@ -121,10 +121,14 @@ class RelationshipValidationResult(BaseModel):
     is_relationship_valid: bool = Field(description="True if the relationship between the CWEs is logically valid in the context of the original vulnerability.")
     relationship: str = Field(description="A descriptive string of the relationship, e.g., 'CWE-20 Can Lead To CWE-704'.")
     justification: str = Field(description="A brief explanation for the validation decision.")
+    confidence: float = Field(description="A confidence score from 0.0 to 1.0 indicating the certainty of the relationship's validity.")
     
 class AttackScenario(BaseModel):
     scenario_title: str = Field(description="A concise title for the attack scenario.")
     scenario_description: str = Field(description="A detailed step-by-step description of how the attack could be executed.")
+    cwe_scenario: str = Field(description="The CWE relationship chain that enables the scenario, e.g., 'CWE-502 mayCause CWE-20'.")
+    confidence: float = Field(description="The confidence score for the attack scenario, from 0.7 to 1.0.")
+    severity: str = Field(description="The severity of the attack scenario ('High', 'Medium', 'Low').")
 
 class AttackScenarios(BaseModel):
     attack_scenarios: List[AttackScenario] = Field(description="A list of potential attack scenarios based on the analysis.")
@@ -512,6 +516,7 @@ def run_full_analysis_pipeline(llm, model_name, code_file_pattern, depth: int, l
         is_relationship_valid: bool = Field(description="True if the relationship is logically valid in the context of the original vulnerability.")
         relationship: str = Field(description="A description of the validated relationship, e.g., 'CWE-20 can lead to CWE-502'.")
         justification: str = Field(description="A brief justification for the validation decision.")
+        confidence: float = Field(description="A confidence score from 0.0 to 1.0 indicating the certainty of the relationship's validity.")
 
     fourth_parser = PydanticOutputParser(pydantic_object=RelationshipValidationResult)
     fourth_user_prompt_template = USER_PROMPTS.get("fifth_request_relationship_analysis")
@@ -524,13 +529,15 @@ def run_full_analysis_pipeline(llm, model_name, code_file_pattern, depth: int, l
         # This vulnerability's specific results will be stored here
         current_vuln_step3_results = []
         current_vuln_step4_results = []
+        validated_chains = [] # Store full validated paths here
 
         # --- Knowledge Graph Traversal using Breadth-First Search ---
-        cwe_to_process = [(initial_cwe_id, 0)] # (cwe_id, current_depth)
+        # Queue now stores (cwe_id, current_depth, path_list)
+        cwe_to_process = [(initial_cwe_id, 0, [initial_cwe_id])] 
         processed_cwes = set()
 
         while cwe_to_process:
-            source_cwe_id, current_depth = cwe_to_process.pop(0)
+            source_cwe_id, current_depth, current_path = cwe_to_process.pop(0)
 
             if source_cwe_id in processed_cwes:
                 continue
@@ -579,6 +586,11 @@ def run_full_analysis_pipeline(llm, model_name, code_file_pattern, depth: int, l
                 if not step3_single_result.is_similar or current_depth >= depth:
                     if current_depth >= depth:
                         print(f"[Info] Reached max depth of {depth}. Stopping traversal from CWE-{source_cwe_id}.")
+                    # Even if we stop, if the path is longer than one, it's a chain.
+                    if len(current_path) > 1:
+                        # Format the chain for logging/output
+                        chain_str = " -> ".join([f"CWE-{cwe}" for cwe in current_path])
+                        validated_chains.append(chain_str)
                     continue
 
                 # Step 4: Find and validate relationships with related CWEs
@@ -630,8 +642,12 @@ def run_full_analysis_pipeline(llm, model_name, code_file_pattern, depth: int, l
                     
                     if step4_single_result.is_relationship_valid:
                         current_vuln_step4_results.append(step4_single_result.model_dump())
-                        # Add the valid related CWE to the queue for further traversal
-                        cwe_to_process.append((target_cwe_id, current_depth + 1))
+                        # Add the valid related CWE to the queue for further traversal with the full path
+                        new_path = current_path + [target_cwe_id]
+                        cwe_to_process.append((target_cwe_id, current_depth + 1, new_path))
+                        # Also add the newly formed chain to our list
+                        chain_str = " -> ".join([f"CWE-{cwe}" for cwe in new_path])
+                        validated_chains.append(chain_str)
 
             except Exception as e:
                 print(f"[Error] Failed during pipeline processing for CWE-{source_cwe_id}: {e}")
@@ -648,9 +664,8 @@ def run_full_analysis_pipeline(llm, model_name, code_file_pattern, depth: int, l
     }
     
     # Create a summary of validated relations for the new field
-    cwe_relation_summary = [
-        res["relationship"] for res in step4_results if res.get("is_relationship_valid")
-    ]
+    # We now use the full chains instead of individual relationships
+    cwe_relation_summary = validated_chains
 
     # --- [Step 5] Synthesizing an attack scenario ---
     print("\n--- [Step 5] Synthesizing an attack scenario... ---")

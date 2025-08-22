@@ -1,0 +1,2 @@
+idx,ID,Name,Description,ExtendedDescription
+0,685,Function Call With Incorrect Number of Arguments,"The product calls a function, procedure, or routine, but the caller specifies too many arguments, or too few arguments, which may lead to undefined behavior and resultant weaknesses.",

@@ -1,0 +1,22 @@
+# IDEs and OS
+.idea/
+.vscode/
+.DS_Store
+*.swp
+*~
+# Logs and temp files
+*.log
+npm-debug.log*
+# Node.js
+/node_modules
+# JSON files (all)
+*.json
+# Build and distribution
+/dist/
+/build/
+# Environment variables
+.env
+.env.local
+.env.development
+.env.test
+.env.production
