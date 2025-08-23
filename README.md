@@ -121,3 +121,12 @@ LLM-GOT는 다양한 LLM(Large Language Model)을 활용하여 보안 취약점�
 ├── config.json           # (선택) API 키 설정
 └── README.md             # 프로젝트 설명
 ``` # lab2
+
+
+start.py \
+  --model "ollama:gpt-oss:20b" \
+  --code-file "/path/to/your/file.java" \
+  --keyword-depth 3 \
+  --keyword-search-results 3 
+
+python start.py --model "ollama:gpt-oss:20b" --code-file "/home/ace4_sijune/vul4j_test/VUL4J-1/VUL4J/vulnerable/*.java" --keyword-depth 3 --keyword-search-results 3# lab3
