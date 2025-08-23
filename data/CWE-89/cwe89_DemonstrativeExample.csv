@@ -1,0 +1,113 @@
+cwe_id,example_id,entry_order,IntroText,Nature,Language,ExampleCode,BodyText
+89,GEN-1,1,"In 2008, a large number of web servers were compromised using the same SQL injection attack string. This single string worked against many different programs. The SQL injection was then used to modify the web sites to serve malicious code.",NULL,NULL,NULL,NULL
+89,DX-209,1,The following code dynamically constructs and executes a SQL query that searches for items matching a specified name. The query restricts the items displayed to those where owner matches the user name of the currently-authenticated user.,NULL,NULL,NULL,NULL
+89,DX-209,2,NULL,Bad,C#,"```
+	...
+	string userName = ctx.getAuthenticatedUserName();
+	string query = ""SELECT * FROM items WHERE owner = '"" + userName + ""' AND itemname = '"" + ItemName.Text + ""'"";
+	sda = new SqlDataAdapter(query, conn);
+	DataTable dt = new DataTable();
+	sda.Fill(dt);
+	...
+```",NULL
+89,DX-209,3,NULL,NULL,NULL,NULL,The query that this code intends to execute follows:
+89,DX-209,4,NULL,Informative,NULL,"```
+	SELECT * FROM items WHERE owner = <userName> AND itemname = <itemName>;
+```",NULL
+89,DX-209,5,NULL,NULL,NULL,NULL,"However, because the query is constructed dynamically by concatenating a constant base query string and a user input string, the query only behaves correctly if itemName does not contain a single-quote character. If an attacker with the user name wiley enters the string:"
+89,DX-209,6,NULL,Attack,NULL,"```
+	name' OR 'a'='a
+```",NULL
+89,DX-209,7,NULL,NULL,NULL,NULL,"for itemName, then the query becomes the following:"
+89,DX-209,8,NULL,Attack,NULL,"```
+	SELECT * FROM items WHERE owner = 'wiley' AND itemname = 'name' OR 'a'='a';
+```",NULL
+89,DX-209,9,NULL,NULL,NULL,NULL,The addition of the:
+89,DX-209,10,NULL,Attack,NULL,"```
+	OR 'a'='a
+```",NULL
+89,DX-209,11,NULL,NULL,NULL,NULL,"condition causes the WHERE clause to always evaluate to true, so the query becomes logically equivalent to the much simpler query:"
+89,DX-209,12,NULL,Attack,NULL,"```
+	SELECT * FROM items;
+```",NULL
+89,DX-209,13,NULL,NULL,NULL,NULL,"This simplification of the query allows the attacker to bypass the requirement that the query only return items owned by the authenticated user; the query now returns all entries stored in the items table, regardless of their specified owner."
+89,GEN-3,1,This example examines the effects of a different malicious value passed to the query constructed and executed in the previous example.,NULL,NULL,NULL,NULL
+89,GEN-3,2,NULL,NULL,NULL,NULL,If an attacker with the user name wiley enters the string:
+89,GEN-3,3,NULL,Attack,NULL,"```
+	name'; DELETE FROM items; --
+```",NULL
+89,GEN-3,4,NULL,NULL,NULL,NULL,"for itemName, then the query becomes the following two queries:"
+89,GEN-3,5,NULL,Attack,SQL,"```
+	SELECT * FROM items WHERE owner = 'wiley' AND itemname = 'name';
+	DELETE FROM items;
+```
+--'*",NULL
+89,GEN-3,6,NULL,NULL,NULL,NULL,"Many database servers, including Microsoft(R) SQL Server 2000, allow multiple SQL statements separated by semicolons to be executed at once. While this attack string results in an error on Oracle and other database servers that do not allow the batch-execution of statements separated by semicolons, on databases that do allow batch execution, this type of attack allows the attacker to execute arbitrary commands against the database."
+89,GEN-3,7,NULL,NULL,NULL,NULL,"Notice the trailing pair of hyphens (--), which specifies to most database servers that the remainder of the statement is to be treated as a comment and not executed. In this case the comment character serves to remove the trailing single-quote left over from the modified query. On a database where comments are not allowed to be used in this way, the general attack could still be made effective using a trick similar to the one shown in the previous example."
+89,GEN-3,8,NULL,NULL,NULL,NULL,If an attacker enters the string
+89,GEN-3,9,NULL,Attack,NULL,"```
+	name'; DELETE FROM items; SELECT * FROM items WHERE 'a'='a
+```",NULL
+89,GEN-3,10,NULL,NULL,NULL,NULL,Then the following three valid statements will be created:
+89,GEN-3,11,NULL,Attack,NULL,"```
+	SELECT * FROM items WHERE owner = 'wiley' AND itemname = 'name';
+	DELETE FROM items;
+	SELECT * FROM items WHERE 'a'='a';
+```",NULL
+89,GEN-3,12,NULL,NULL,NULL,NULL,"One traditional approach to preventing SQL injection attacks is to handle them as an input validation problem and either accept only characters from an allowlist of safe values or identify and escape a denylist of potentially malicious values. Allowlists can be a very effective means of enforcing strict input validation rules, but parameterized SQL statements require less maintenance and can offer more guarantees with respect to security. As is almost always the case, denylisting is riddled with loopholes that make it ineffective at preventing SQL injection attacks. For example, attackers can:"
+89,GEN-3,13,NULL,NULL,NULL,NULL,- Target fields that are not quoted - Find ways to bypass the need for certain escaped meta-characters - Use stored procedures to hide the injected meta-characters.
+89,GEN-3,14,NULL,NULL,NULL,NULL,"Manually escaping characters in input to SQL queries can help, but it will not make your application secure from SQL injection attacks."
+89,GEN-3,15,NULL,NULL,NULL,NULL,"Another solution commonly proposed for dealing with SQL injection attacks is to use stored procedures. Although stored procedures prevent some types of SQL injection attacks, they do not protect against many others. For example, the following PL/SQL procedure is vulnerable to the same SQL injection attack shown in the first example."
+89,GEN-3,16,NULL,Bad,SQL,"```
+	procedure get_item ( itm_cv IN OUT ItmCurTyp, usr in varchar2, itm in varchar2)
+	is open itm_cv for
+	' SELECT * FROM items WHERE ' || 'owner = '|| usr || ' AND itemname = ' || itm || ';
+	end get_item;
+```",NULL
+89,GEN-3,17,NULL,NULL,NULL,NULL,"Stored procedures typically help prevent SQL injection attacks by limiting the types of statements that can be passed to their parameters. However, there are many ways around the limitations and many interesting statements that can still be passed to stored procedures. Again, stored procedures can prevent some exploits, but they will not make your application secure against SQL injection attacks."
+89,GEN-4,1,"MS SQL has a built in function that enables shell command execution. An SQL injection in such a context could be disastrous. For example, a query of the form:",NULL,NULL,NULL,NULL
+89,GEN-4,2,NULL,Bad,SQL,"```
+	SELECT ITEM,PRICE FROM PRODUCT WHERE ITEM_CATEGORY='$user_input' ORDER BY PRICE
+```",NULL
+89,GEN-4,3,NULL,NULL,NULL,NULL,Where $user_input is taken from an untrusted source.
+89,GEN-4,4,NULL,NULL,NULL,NULL,If the user provides the string:
+89,GEN-4,5,NULL,Attack,NULL,"```
+	'; exec master..xp_cmdshell 'dir' --
+```",NULL
+89,GEN-4,6,NULL,NULL,NULL,NULL,The query will take the following form:
+89,GEN-4,7,NULL,Attack,NULL,"```
+	SELECT ITEM,PRICE FROM PRODUCT WHERE ITEM_CATEGORY=''; exec master..xp_cmdshell 'dir' --' ORDER BY PRICE
+```",NULL
+89,GEN-4,8,NULL,NULL,NULL,NULL,"Now, this query can be broken down into:"
+89,GEN-4,9,NULL,NULL,NULL,NULL,"1. a first SQL query: SELECT ITEM,PRICE FROM PRODUCT WHERE ITEM_CATEGORY=''; 1. a second SQL query, which executes the dir command in the shell: exec master..xp_cmdshell 'dir' 1. an MS SQL comment: --' ORDER BY PRICE"
+89,GEN-4,10,NULL,NULL,NULL,NULL,"As can be seen, the malicious input changes the semantics of the query into a query, a shell command execution and a comment."
+89,GEN-5,1,This code intends to print a message summary given the message ID.,NULL,NULL,NULL,NULL
+89,GEN-5,2,NULL,Bad,PHP,"```
+	$id = $_COOKIE[""mid""];
+	mysql_query(""SELECT MessageID, Subject FROM messages WHERE MessageID = '$id'"");
+```",NULL
+89,GEN-5,3,NULL,NULL,NULL,NULL,"The programmer may have skipped any input validation on $id under the assumption that attackers cannot modify the cookie. However, this is easy to do with custom client code or even in the web browser."
+89,GEN-5,4,NULL,NULL,NULL,NULL,"While $id is wrapped in single quotes in the call to mysql_query(), an attacker could simply change the incoming mid cookie to:"
+89,GEN-5,5,NULL,Attack,NULL,"```
+	1432' or '1' = '1
+```",NULL
+89,GEN-5,6,NULL,NULL,NULL,NULL,This would produce the resulting query:
+89,GEN-5,7,NULL,Result,NULL,"```
+	SELECT MessageID, Subject FROM messages WHERE MessageID = '1432' or '1' = '1'
+```",NULL
+89,GEN-5,8,NULL,NULL,NULL,NULL,"Not only will this retrieve message number 1432, it will retrieve all other messages."
+89,GEN-5,9,NULL,NULL,NULL,NULL,"In this case, the programmer could apply a simple modification to the code to eliminate the SQL injection:"
+89,GEN-5,10,NULL,Good,PHP,"```
+	$id = intval($_COOKIE[""mid""]);
+	mysql_query(""SELECT MessageID, Subject FROM messages WHERE MessageID = '$id'"");
+```",NULL
+89,GEN-5,11,NULL,NULL,NULL,NULL,"However, if this code is intended to support multiple users with different message boxes, the code might also need an access control check (CWE-285) to ensure that the application user has the permission to see that message."
+89,GEN-6,1,This example attempts to take a last name provided by a user and enter it into a database.,NULL,NULL,NULL,NULL
+89,GEN-6,2,NULL,Bad,Perl,"```
+	$userKey = getUserID();
+	$name = getUserInput();
+```
+# ensure only letters, hyphens and apostrophe are allowed* 
+	$name = allowList($name, ""^a-zA-z'-$"");
+	$query = ""INSERT INTO last_names VALUES('$userKey', '$name')"";",NULL
+89,GEN-6,3,NULL,NULL,NULL,NULL,"While the programmer applies an allowlist to the user input, it has shortcomings. First of all, the user is still allowed to provide hyphens, which are used as comment structures in SQL. If a user specifies ""--"" then the remainder of the statement will be treated as a comment, which may bypass security logic. Furthermore, the allowlist permits the apostrophe, which is also a data / command separator in SQL. If a user supplies a name with an apostrophe, they may be able to alter the structure of the whole statement and even change control flow of the program, possibly accessing or modifying confidential information. In this situation, both the hyphen and apostrophe are legitimate characters for a last name and permitting them is required. Instead, a programmer may want to use a prepared statement or apply an encoding routine to the input to prevent any data / directive misinterpretations."

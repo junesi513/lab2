@@ -1,0 +1,2 @@
+idx,ID,Name,Description,ExtendedDescription
+0,306,Missing Authentication for Critical Function,The product does not perform any authentication for functionality that requires a provable user identity or consumes a significant amount of resources.,

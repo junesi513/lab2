@@ -1,0 +1,4 @@
+cwe_id,nature,related_cwe_id
+99,ChildOf,74
+99,PeerOf,706
+99,CanAlsoBe,73

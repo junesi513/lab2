@@ -7,3 +7,4 @@ requests
 pandas 
 beautifulsoup4
 googlesearch-python 
+rank-bm25 

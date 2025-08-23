@@ -25,6 +25,7 @@ from langchain.output_parsers import PydanticOutputParser, OutputFixingParser
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.exceptions import OutputParserException
 from langchain_core.prompts import PromptTemplate, ChatPromptTemplate
+from rank_bm25 import BM25Okapi
 
 from prompts.user_prompts import USER_PROMPTS
 from src.chain import create_security_chain
@@ -132,9 +133,14 @@ class VulnerabilityDetail(BaseModel):
     confirmed_cwes: List[dict] = Field(description="List of CWEs confirmed to be related, including ID, confidence, and reasoning.")
     analysis: FinalAnalysis
 
+class HolisticAnalysis(BaseModel):
+    attack_chain: str = Field(description="The most plausible attack chain linking multiple vulnerabilities, described as a sequence like 'CWE-A enables CWE-B which mayCause CWE-C'.")
+    attack_narrative: str = Field(description="A comprehensive narrative describing how an attacker could exploit the entire chain of vulnerabilities in the context of the provided source code.")
+
 class FinalReport(BaseModel):
     analysis_summary: dict
     vulnerability_details: List[VulnerabilityDetail]
+    holistic_analysis: HolisticAnalysis = Field(description="An overall analysis of how different vulnerabilities can be chained together in an attack.")
 
 
 def get_llm(model_str: str, api_keys: dict):
@@ -542,13 +548,43 @@ def run_vulnerability_analysis_pipeline(llm, model_name, code_file_pattern, keyw
             if logger:
                 logger.info(f"\n--- Validating for Vulnerability #{task['vulnerability_id']}: {vuln.vulnerability} ---")
 
+            # --- BM25 Pre-calculation ---
+            cwe_descriptions = {}
+            for cwe_id in cwe_ids_to_validate:
+                cwe_main_file = f"data/CWE-{cwe_id}/cwe{cwe_id}_cwe_main.csv"
+                if os.path.exists(cwe_main_file):
+                    df = pd.read_csv(cwe_main_file)
+                    if not df.empty and 'Description' in df.columns:
+                        cwe_descriptions[cwe_id] = df['Description'].iloc[0]
+
+            normalized_bm25_scores = {}
+            if cwe_descriptions:
+                corpus = list(cwe_descriptions.values())
+                tokenized_corpus = [doc.lower().split(" ") for doc in corpus]
+                bm25 = BM25Okapi(tokenized_corpus)
+                
+                query = vuln.vulnerability.lower().split(" ")
+                bm25_scores = bm25.get_scores(query)
+
+                # Normalize scores to 0-1 range
+                min_score = min(bm25_scores)
+                max_score = max(bm25_scores)
+                
+                if max_score > min_score:
+                    normalized_scores = [(s - min_score) / (max_score - min_score) for s in bm25_scores]
+                else:
+                    normalized_scores = [0.0] * len(bm25_scores) # All scores are the same
+
+                corpus_cwe_ids = list(cwe_descriptions.keys())
+                for i, score in enumerate(normalized_scores):
+                    normalized_bm25_scores[corpus_cwe_ids[i]] = score
+            # --- End of BM25 Pre-calculation ---
+
             for cwe_id in sorted(list(cwe_ids_to_validate), key=int):
                 try:
-                    cwe_main_file = f"data/CWE-{cwe_id}/cwe{cwe_id}_cwe_main.csv"
-                    if not os.path.exists(cwe_main_file): continue
-                    df = pd.read_csv(cwe_main_file)
-                    cwe_description = df['Description'].iloc[0] if not df.empty else "Not found."
-                    if cwe_description == "Not found.": continue
+                    cwe_description = cwe_descriptions.get(cwe_id)
+                    if not cwe_description:
+                        continue
 
                     validation_prompt = validation_prompt_template.format(
                         original_vulnerability_description=vuln.model_dump_json(indent=2),
@@ -569,12 +605,19 @@ def run_vulnerability_analysis_pipeline(llm, model_name, code_file_pattern, keyw
                         logger.info("===================================================================")
 
                     if validation_result.is_similar and validation_result.confidence >= 0.8:
-                        print(f"  - MATCH FOUND: CWE-{cwe_id} (Confidence: {validation_result.confidence:.2f})")
+                        llm_confidence = validation_result.confidence
+                        bm25_confidence = normalized_bm25_scores.get(cwe_id, 0.0)
+                        
+                        # Hybrid Score Calculation
+                        final_confidence = (llm_confidence * 0.7) + (bm25_confidence * 0.3)
+                        
+                        print(f"  - MATCH FOUND: CWE-{cwe_id} (LLM: {llm_confidence:.2f}, BM25: {bm25_confidence:.2f}, Final: {final_confidence:.2f})")
                         if logger:
-                            logger.info(f"  - MATCH FOUND: CWE-{cwe_id} (Confidence: {validation_result.confidence:.2f})")
+                            logger.info(f"  - MATCH FOUND: CWE-{cwe_id} (LLM: {llm_confidence:.2f}, BM25: {bm25_confidence:.2f}, Final: {final_confidence:.2f})")
+                        
                         confirmed_cwes_for_vuln.append({
                             "cwe_id": f"CWE-{cwe_id}",
-                            "confidence": validation_result.confidence,
+                            "confidence": final_confidence,
                             "reasoning": validation_result.reasoning
                         })
                 except Exception as e:
@@ -597,6 +640,8 @@ def run_vulnerability_analysis_pipeline(llm, model_name, code_file_pattern, keyw
             logger.info(f"\n--- [Step 5] Generating Final Security Report... ---")
         # This parser is for the specific output of the fifth prompt
         final_analysis_parser = PydanticOutputParser(pydantic_object=FinalAnalysis)
+        output_fixing_parser_step5 = OutputFixingParser.from_llm(llm=llm, parser=final_analysis_parser)
+
         final_report_prompt_template = USER_PROMPTS.get("fifth_request_attack_scenario")
 
         report_vulnerability_details = []
@@ -629,7 +674,7 @@ def run_vulnerability_analysis_pipeline(llm, model_name, code_file_pattern, keyw
 
                 try:
                     # The chain should use the parser for the analysis part, not the whole report
-                    final_chain = PromptTemplate.from_template("{prompt}") | llm | final_analysis_parser
+                    final_chain = PromptTemplate.from_template("{prompt}") | llm | output_fixing_parser_step5
                     final_analysis_result = final_chain.invoke({"prompt": final_prompt})
 
                     if logger:
@@ -653,13 +698,63 @@ def run_vulnerability_analysis_pipeline(llm, model_name, code_file_pattern, keyw
                         logger.error(f"  - Error generating report for vulnerability #{task['vulnerability_id']}: {e}")
 
         if report_vulnerability_details:
-            final_report = FinalReport(
-                analysis_summary={
+            final_report_data = {
+                "analysis_summary": {
                     "file_path": ", ".join(glob.glob(os.path.expanduser(code_file_pattern))),
                     "total_vulnerabilities_found": len(report_vulnerability_details)
                 },
-                vulnerability_details=report_vulnerability_details
+                "vulnerability_details": report_vulnerability_details
+            }
+
+            # --- [Step 6] Holistic Attack Chain Analysis ---
+            print(f"\n--- [Step 6] Generating Holistic Attack Chain Analysis... ---")
+            if logger:
+                logger.info(f"\n--- [Step 6] Generating Holistic Attack Chain Analysis... ---")
+
+            holistic_parser = PydanticOutputParser(pydantic_object=HolisticAnalysis)
+            output_fixing_parser_step6 = OutputFixingParser.from_llm(llm=llm, parser=holistic_parser)
+            holistic_prompt_template = USER_PROMPTS.get("sixth_request_holistic_analysis")
+
+            # Consolidate all data for the holistic prompt
+            all_vuln_analyses = "\n\n".join([task["vulnerability"].model_dump_json(indent=2) for task in step4_validation_tasks])
+            all_confirmed_cwes = []
+            for task in step4_validation_tasks:
+                if "confirmed_cwes" in task:
+                    all_confirmed_cwes.extend(task["confirmed_cwes"])
+            
+            unique_cwe_ids = sorted(list(set(cwe['cwe_id'].replace("CWE-", "") for cwe in all_confirmed_cwes)), key=int)
+            
+            all_cwe_data_parts = []
+            for cwe_id in unique_cwe_ids:
+                cwe_main_file = f"data/CWE-{cwe_id}/cwe{cwe_id}_cwe_main.csv"
+                if os.path.exists(cwe_main_file):
+                    df = pd.read_csv(cwe_main_file)
+                    all_cwe_data_parts.append(f"--- Data for CWE-{cwe_id} ---\n{df.to_string()}")
+
+                relation_file = f"data/CWE-{cwe_id}/cwe{cwe_id}_RelatedWeakness.csv"
+                if os.path.exists(relation_file):
+                    df_relations = pd.read_csv(relation_file)
+                    all_cwe_data_parts.append(f"--- Relations for CWE-{cwe_id} ---\n{df_relations.to_csv(index=False)}")
+
+            holistic_prompt = holistic_prompt_template.format(
+                source_code=user_code,
+                all_vulnerability_analyses=all_vuln_analyses,
+                all_confirmed_cwes_list=json.dumps(all_confirmed_cwes, indent=2),
+                all_cwe_data="\n".join(all_cwe_data_parts),
+                format_instructions=holistic_parser.get_format_instructions()
             )
+
+            try:
+                holistic_chain = PromptTemplate.from_template("{prompt}") | llm | output_fixing_parser_step6
+                holistic_analysis_result = holistic_chain.invoke({"prompt": holistic_prompt})
+                final_report_data["holistic_analysis"] = holistic_analysis_result
+            except Exception as e:
+                print(f"  - Error generating holistic analysis: {e}")
+                if logger:
+                    logger.error(f"  - Error generating holistic analysis: {e}")
+
+
+            final_report = FinalReport(**final_report_data)
             print("\n--- FINAL SECURITY REPORT ---")
             print(final_report.model_dump_json(indent=2))
             if logger:

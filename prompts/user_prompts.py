@@ -51,4 +51,33 @@ USER_PROMPTS = {
     {cwe_relationship_data}
     ```
     """,
+    "sixth_request_holistic_analysis": (
+        '''As a top-tier threat modeling expert, your mission is to synthesize all provided information to construct a holistic attack narrative. You are given the full source code, a list of all vulnerabilities identified by a preliminary AI scan, a consolidated list of all CWEs confirmed to be relevant, and the official data for those CWEs.
+
+Your task is to look beyond individual findings and identify how these separate vulnerabilities can be chained together by an attacker to create a more significant security breach.
+
+Based on all the provided context, generate a final analysis that includes:
+1.  **`attack_chain`**: A clear, logical sequence showing how the primary confirmed CWEs could be linked. Use descriptive relationships like 'enables', 'leads to', 'bypasses', or 'is exploited by'. For example: "CWE-20 (Improper Input Validation) in the configuration parser enables an attacker to bypass checks, which leads to CWE-502 (Deserialization of Untrusted Data) when processing the main payload, which mayCause CWE-94 (Code Injection)."
+2.  **`attack_narrative`**: A detailed and plausible story of how a real-world attacker would execute this attack chain against the provided source code. The narrative should be specific, referencing parts of the code and the context of the vulnerabilities to tell a complete story from initial exploit to final impact.
+
+Your output MUST be a single, valid JSON object that strictly follows this format.
+{format_instructions}
+
+--- ALL PROVIDED CONTEXT ---
+
+**1. Full Source Code:**
+```java
+{source_code}
+```
+
+**2. All Initial Vulnerability Analyses from Preliminary Scan:**
+{all_vulnerability_analyses}
+
+**3. Consolidated List of All Confirmed CWEs:**
+{all_confirmed_cwes_list}
+
+**4. All Official CWE Data (Descriptions and Relationships):**
+{all_cwe_data}
+'''
+    )
 }

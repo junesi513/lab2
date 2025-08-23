@@ -1,0 +1,16 @@
+cwe_id,example_id,entry_order,IntroText,Nature,Language,ExampleCode,BodyText
+99,GEN-1,1,"The following Java code uses input from an HTTP request to create a file name. The programmer has not considered the possibility that an attacker could provide a file name such as ""../../tomcat/conf/server.xml"", which causes the application to delete one of its own configuration files.",NULL,NULL,NULL,NULL
+99,GEN-1,2,NULL,Bad,Java,"```
+	String rName = request.getParameter(""reportName"");
+	File rFile = new File(""/usr/local/apfr/reports/"" + rName);
+	...
+	rFile.delete();
+```",NULL
+99,GEN-2,1,"The following code uses input from the command line to determine which file to open and echo back to the user. If the program runs with privileges and malicious users can create soft links to the file, they can use the program to read the first part of any file on the system.",NULL,NULL,NULL,NULL
+99,GEN-2,2,NULL,Bad,C++,"```
+	ifstream ifs(argv[0]);
+	string s;
+	ifs >> s;
+	cout << s;
+```",NULL
+99,GEN-2,3,NULL,NULL,NULL,NULL,"The kind of resource the data affects indicates the kind of content that may be dangerous. For example, data containing special characters like period, slash, and backslash, are risky when used in methods that interact with the file system. (Resource injection, when it is related to file system resources, sometimes goes by the name ""path manipulation."") Similarly, data that contains URLs and URIs is risky for functions that create remote connections."

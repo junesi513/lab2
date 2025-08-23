@@ -1,0 +1,82 @@
+cwe_id,example_id,entry_order,IntroText,Nature,Language,ExampleCode,BodyText
+772,DX-81,1,"The following method never closes the new file handle. Given enough time, the Finalize() method for BufferReader should eventually call Close(), but there is no guarantee as to how long this action will take. In fact, there is no guarantee that Finalize() will ever be invoked. In a busy environment, the Operating System could use up all of the available file handles before the Close() function is called.",NULL,NULL,NULL,NULL
+772,DX-81,2,NULL,Bad,Java,"```
+	private void processFile(string fName)
+	{
+		BufferReader fil = new BufferReader(new FileReader(fName));
+		String line;
+		while ((line = fil.ReadLine()) != null)
+		{
+			processLine(line);
+		}
+	}
+```",NULL
+772,DX-81,3,NULL,NULL,NULL,NULL,"The good code example simply adds an explicit call to the Close() function when the system is done using the file. Within a simple example such as this the problem is easy to see and fix. In a real system, the problem may be considerably more obscure."
+772,DX-81,4,NULL,Good,Java,"```
+	private void processFile(string fName)
+	{
+		BufferReader fil = new BufferReader(new FileReader(fName));
+		String line;
+		while ((line = fil.ReadLine()) != null)
+		{
+			processLine(line);
+		}
+		fil.Close();
+	}
+```",NULL
+772,GEN-2,1,"The following code attempts to open a new connection to a database, process the results returned by the database, and close the allocated SqlConnection object.",NULL,NULL,NULL,NULL
+772,GEN-2,2,NULL,Bad,C#,"```
+	SqlConnection conn = new SqlConnection(connString);
+	SqlCommand cmd = new SqlCommand(queryString);
+	cmd.Connection = conn;
+	conn.Open();
+	SqlDataReader rdr = cmd.ExecuteReader();
+	HarvestResults(rdr);
+	conn.Connection.Close();
+```",NULL
+772,GEN-2,3,NULL,NULL,NULL,NULL,"The problem with the above code is that if an exception occurs while executing the SQL or processing the results, the SqlConnection object is not closed. If this happens often enough, the database will run out of available cursors and not be able to execute any more SQL queries."
+772,DX-82,1,This code attempts to open a connection to a database and catches any exceptions that may occur.,NULL,NULL,NULL,NULL
+772,DX-82,2,NULL,Bad,Java,"```
+	try {
+		Connection con = DriverManager.getConnection(some_connection_string);
+	}
+	catch ( Exception e ) {
+		log( e );
+	}
+```",NULL
+772,DX-82,3,NULL,NULL,NULL,NULL,"If an exception occurs after establishing the database connection and before the same connection closes, the pool of database connections may become exhausted. If the number of available connections is exceeded, other users cannot access this resource, effectively denying access to the application."
+772,DX-83,1,"Under normal conditions the following C# code executes a database query, processes the results returned by the database, and closes the allocated SqlConnection object. But if an exception occurs while executing the SQL or processing the results, the SqlConnection object is not closed. If this happens often enough, the database will run out of available cursors and not be able to execute any more SQL queries.",NULL,NULL,NULL,NULL
+772,DX-83,2,NULL,Bad,C#,"```
+	...
+	SqlConnection conn = new SqlConnection(connString);
+	SqlCommand cmd = new SqlCommand(queryString);
+	cmd.Connection = conn;
+	conn.Open();
+	SqlDataReader rdr = cmd.ExecuteReader();
+	HarvestResults(rdr);
+	conn.Connection.Close();
+	...
+```",NULL
+772,DX-84,1,"The following C function does not close the file handle it opens if an error occurs. If the process is long-lived, the process can run out of file handles.",NULL,NULL,NULL,NULL
+772,DX-84,2,NULL,Bad,C,"```
+	int decodeFile(char* fName) {
+			char buf[BUF_SZ];
+			FILE* f = fopen(fName, ""r"");
+			if (!f) {
+				printf(""cannot open %s\n"", fName);
+				return DECODE_FAIL;
+			}
+			else {
+					while (fgets(buf, BUF_SZ, f)) {
+						if (!checkChecksum(buf)) {
+							return DECODE_FAIL;
+						}
+						else {
+							decodeBlock(buf);
+						}
+					}
+			}
+			fclose(f);
+			return DECODE_SUCCESS;
+	}
+```",NULL

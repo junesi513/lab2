@@ -1,0 +1,2 @@
+idx,ID,Name,Description,ExtendedDescription
+0,598,Use of GET Request Method With Sensitive Query Strings,The web application uses the HTTP GET method to process a request and includes sensitive information in the query string of that request.,
