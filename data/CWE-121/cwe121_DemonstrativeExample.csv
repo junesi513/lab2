@@ -1,0 +1,26 @@
+cwe_id,example_id,entry_order,IntroText,Nature,Language,ExampleCode,BodyText
+121,GEN-1,1,"While buffer overflow examples can be rather complex, it is possible to have very simple, yet still exploitable, stack-based buffer overflows:",NULL,NULL,NULL,NULL
+121,GEN-1,2,NULL,Bad,C,"```
+	#define BUFSIZE 256
+	int main(int argc, char **argv) {
+		char buf[BUFSIZE];
+		strcpy(buf, argv[1]);
+	}
+```",NULL
+121,GEN-1,3,NULL,NULL,NULL,NULL,"The buffer size is fixed, but there is no guarantee the string in argv[1] will not exceed this size and cause an overflow."
+121,DX-1,1,"This example takes an IP address from a user, verifies that it is well formed and then looks up the hostname and copies it into a buffer.",NULL,NULL,NULL,NULL
+121,DX-1,2,NULL,Bad,C,"```
+	void host_lookup(char *user_supplied_addr){
+			struct hostent *hp;
+			in_addr_t *addr;
+			char hostname[64];
+			in_addr_t inet_addr(const char *cp);
+```
+/*routine that ensures user_supplied_addr is in the right format for conversion */* 
+			
+			validate_addr_form(user_supplied_addr);
+			addr = inet_addr(user_supplied_addr);
+			hp = gethostbyaddr( addr, sizeof(struct in_addr), AF_INET);
+			strcpy(hostname, hp->h_name);}",NULL
+121,DX-1,3,NULL,NULL,NULL,NULL,"This function allocates a buffer of 64 bytes to store the hostname, however there is no guarantee that the hostname will not be larger than 64 bytes. If an attacker specifies an address which resolves to a very large hostname, then the function may overwrite sensitive data or even relinquish control flow to the attacker."
+121,DX-1,4,NULL,NULL,NULL,NULL,Note that this example also contains an unchecked return value (CWE-252) that can lead to a NULL pointer dereference (CWE-476).

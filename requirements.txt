@@ -5,3 +5,5 @@ langchain-community
 python-dotenv
 requests 
 pandas 
+beautifulsoup4
+googlesearch-python 

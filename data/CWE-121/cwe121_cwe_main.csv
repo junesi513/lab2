@@ -1,0 +1,2 @@
+idx,ID,Name,Description,ExtendedDescription
+0,121,Stack-based Buffer Overflow,"A stack-based buffer overflow condition is a condition where the buffer being overwritten is allocated on the stack (i.e., is a local variable or, rarely, a parameter to a function).",

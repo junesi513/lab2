@@ -1,0 +1,2 @@
+idx,ID,Name,Description,ExtendedDescription
+0,431,Missing Handler,A handler is not available or implemented.,"When an exception is thrown and not caught, the process has given up an opportunity to decide if a given failure or event is worth a change in execution."

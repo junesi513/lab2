@@ -1,0 +1,2 @@
+idx,ID,Name,Description,ExtendedDescription
+0,536,Servlet Runtime Error Message Containing Sensitive Information,A servlet error message indicates that there exists an unhandled exception in your web application code and may provide useful information to an attacker.,

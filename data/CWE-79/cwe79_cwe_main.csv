@@ -1,0 +1,2 @@
+idx,ID,Name,Description,ExtendedDescription
+0,79,Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting'),The product does not neutralize or incorrectly neutralizes user-controllable input before it is placed in output that is used as a web page that is served to other users.,"There are many variants of cross-site scripting, characterized by a variety of terms or involving different attack topologies. However, they all indicate the same fundamental weakness: improper neutralization of dangerous input between the adversary and a victim."

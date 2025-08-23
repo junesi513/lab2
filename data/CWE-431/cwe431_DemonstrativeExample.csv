@@ -1,0 +1,11 @@
+cwe_id,example_id,entry_order,IntroText,Nature,Language,ExampleCode,BodyText
+431,GEN-1,1,"If a Servlet does not catch all exceptions, it may reveal debugging information that will help an adversary form a plan of attack. In the following method a DNS lookup failure will cause the Servlet to throw an exception.",NULL,NULL,NULL,NULL
+431,GEN-1,2,NULL,Bad,Java,"```
+	protected void doPost (HttpServletRequest req, HttpServletResponse res) throws IOException {
+		String ip = req.getRemoteAddr();
+		InetAddress addr = InetAddress.getByName(ip);
+		...
+		out.println(""hello "" + addr.getHostName());
+	}
+```",NULL
+431,GEN-1,3,NULL,NULL,NULL,NULL,"When a Servlet throws an exception, the default error response the Servlet container sends back to the user typically includes debugging information. This information is of great value to an attacker."

@@ -1,0 +1,18 @@
+cwe_id,example_id,entry_order,IntroText,Nature,Language,ExampleCode,BodyText
+433,DX-104,1,The following code uses an include file to store database credentials:,NULL,NULL,NULL,NULL
+433,DX-104,2,NULL,NULL,NULL,NULL,database.inc
+433,DX-104,3,NULL,Bad,PHP,"```
+	<?php
+	$dbName = 'usersDB';
+	$dbPassword = 'skjdh#67nkjd3$3$';
+	?>
+```",NULL
+433,DX-104,4,NULL,NULL,NULL,NULL,login.php
+433,DX-104,5,NULL,Bad,PHP,"```
+	<?php
+	include('database.inc');
+	$db = connectToDB($dbName, $dbPassword);
+	$db.authenticateUser($username, $password);
+	?>
+```",NULL
+433,DX-104,6,NULL,NULL,NULL,NULL,"If the server does not have an explicit handler set for .inc files it may send the contents of database.inc to an attacker without pre-processing, if the attacker requests the file directly. This will expose the database name and password."

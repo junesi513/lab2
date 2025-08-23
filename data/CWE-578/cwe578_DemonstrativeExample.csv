@@ -1,0 +1,47 @@
+cwe_id,example_id,entry_order,IntroText,Nature,Language,ExampleCode,BodyText
+578,GEN-1,1,"The following Java example is a simple stateless Enterprise JavaBean that retrieves the interest rate for the number of points for a mortgage. The interest rates for various points are retrieved from an XML document on the local file system, and the EJB uses the Class Loader for the EJB class to obtain the XML document from the local file system as an input stream.",NULL,NULL,NULL,NULL
+578,GEN-1,2,NULL,Bad,Java,"```
+	@Stateless
+	public class InterestRateBean implements InterestRateRemote {
+			private Document interestRateXMLDocument = null;
+			public InterestRateBean() {
+					try {
+```
+// get XML document from the local filesystem as an input stream* 
+							
+							
+							 *// using the ClassLoader for this class* 
+							ClassLoader loader = this.getClass().getClassLoader();
+							InputStream in = loader.getResourceAsStream(Constants.INTEREST_RATE_FILE);
+			
+			DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+			```
+				DocumentBuilder db = dbf.newDocumentBuilder();
+				interestRateXMLDocument = db.parse(interestRateFile);
+			} catch (IOException ex) {...}
+	}
+			public BigDecimal getInterestRate(Integer points) {
+				return getInterestRateFromXML(points);
+			}
+```
+/* member function to retrieve interest rate from XML document on the local file system */* 
+			
+			private BigDecimal getInterestRateFromXML(Integer points) {...}}",NULL
+578,GEN-1,3,NULL,NULL,NULL,NULL,This use of the Java Class Loader class within any kind of Enterprise JavaBean violates the restriction of the EJB specification against obtaining the current class loader as this could compromise the security of the application using the EJB.
+578,GEN-2,1,"An EJB is also restricted from creating a custom class loader and creating a class and instance of a class from the class loader, as shown in the following example.",NULL,NULL,NULL,NULL
+578,GEN-2,2,NULL,Bad,Java,"```
+	@Stateless
+	public class LoaderSessionBean implements LoaderSessionRemote {
+			public LoaderSessionBean() {
+				try {
+					ClassLoader loader = new CustomClassLoader();
+					Class c = loader.loadClass(""someClass"");
+					Object obj = c.newInstance();
+					/* perform some task that uses the new class instance member variables or functions */
+					...
+				} catch (Exception ex) {...}
+			}
+			public class CustomClassLoader extends ClassLoader {
+			}
+	}
+```",NULL

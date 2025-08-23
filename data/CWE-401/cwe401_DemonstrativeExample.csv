@@ -1,0 +1,14 @@
+cwe_id,example_id,entry_order,IntroText,Nature,Language,ExampleCode,BodyText
+401,GEN-1,1,The following C function leaks a block of allocated memory if the call to read() does not return the expected number of bytes:,NULL,NULL,NULL,NULL
+401,GEN-1,2,NULL,Bad,C,"```
+	char* getBlock(int fd) {
+			char* buf = (char*) malloc(BLOCK_SIZE);
+			if (!buf) {
+				return NULL;
+			}
+			if (read(fd, buf, BLOCK_SIZE) != BLOCK_SIZE) {
+					return NULL;
+			}
+			return buf;
+	}
+```",NULL

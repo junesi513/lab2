@@ -1,0 +1,2 @@
+idx,ID,Name,Description,ExtendedDescription
+0,95,Improper Neutralization of Directives in Dynamically Evaluated Code ('Eval Injection'),"The product receives input from an upstream component, but it does not neutralize or incorrectly neutralizes code syntax before using the input in a dynamic evaluation call (e.g. ""eval"").",

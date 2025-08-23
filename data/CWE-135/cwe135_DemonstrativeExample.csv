@@ -1,0 +1,30 @@
+cwe_id,example_id,entry_order,IntroText,Nature,Language,ExampleCode,BodyText
+135,GEN-1,1,The following example would be exploitable if any of the commented incorrect malloc calls were used.,NULL,NULL,NULL,NULL
+135,GEN-1,2,NULL,Bad,C,"```
+	#include <stdio.h>
+	#include <strings.h>
+	#include <wchar.h>
+	int main() {
+			wchar_t wideString[] = L""The spazzy orange tiger jumped "" \
+			""over the tawny jaguar."";
+			wchar_t *newString;
+			printf(""Strlen() output: %d\nWcslen() output: %d\n"",
+			strlen(wideString), wcslen(wideString));
+			/* Wrong because the number of chars in a string isn't related to its length in bytes //
+			newString = (wchar_t *) malloc(strlen(wideString));
+			*/
+			/* Wrong because wide characters aren't 1 byte long! //
+			newString = (wchar_t *) malloc(wcslen(wideString));
+			*/
+			/* Wrong because wcslen does not include the terminating null */
+			newString = (wchar_t *) malloc(wcslen(wideString) * sizeof(wchar_t));
+			/* correct! */
+			newString = (wchar_t *) malloc((wcslen(wideString) + 1) * sizeof(wchar_t));
+			/* ... */
+	}
+```",NULL
+135,GEN-1,3,NULL,NULL,NULL,NULL,The output from the printf() statement would be:
+135,GEN-1,4,NULL,Result,NULL,"```
+	Strlen() output: 0
+	Wcslen() output: 53
+```",NULL

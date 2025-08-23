@@ -1,0 +1,22 @@
+cwe_id,example_id,entry_order,IntroText,Nature,Language,ExampleCode,BodyText
+397,DX-198,1,The following method throws three types of exceptions.,NULL,NULL,NULL,NULL
+397,DX-198,2,NULL,Good,Java,"```
+	public void doExchange() throws IOException, InvocationTargetException, SQLException {
+		...
+	}
+```",NULL
+397,DX-198,3,NULL,NULL,NULL,NULL,While it might seem tidier to write
+397,DX-198,4,NULL,Bad,Java,"```
+	public void doExchange() throws Exception {
+		...
+	}
+```",NULL
+397,DX-198,5,NULL,NULL,NULL,NULL,"doing so hampers the caller's ability to understand and handle the exceptions that occur. Further, if a later revision of doExchange() introduces a new type of exception that should be treated differently than previous exceptions, there is no easy way to enforce this requirement."
+397,GEN-2,1,"Early versions of C++ (C++98, C++03, C++11) included a feature known as Dynamic Exception Specification. This allowed functions to declare what type of exceptions it may throw. It is possible to declare a general class of exception to cover any derived exceptions that may be thrown.",NULL,NULL,NULL,NULL
+397,GEN-2,2,NULL,Bad,C++,"```
+	int myfunction() throw(std::exception) {
+		if (0) throw out_of_range();
+		throw length_error();
+	}
+```",NULL
+397,GEN-2,3,NULL,NULL,NULL,NULL,"In the example above, the code declares that myfunction() can throw an exception of type ""std::exception"" thus hiding details about the possible derived exceptions that could potentially be thrown."

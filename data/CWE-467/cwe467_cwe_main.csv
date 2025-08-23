@@ -1,0 +1,2 @@
+idx,ID,Name,Description,ExtendedDescription
+0,467,Use of sizeof() on a Pointer Type,"The code calls sizeof() on a pointer type, which can be an incorrect calculation if the programmer intended to determine the size of the data that is being pointed to.","The use of sizeof() on a pointer can sometimes generate useful information. An obvious case is to find out the wordsize on a platform. More often than not, the appearance of sizeof(pointer) indicates a bug."

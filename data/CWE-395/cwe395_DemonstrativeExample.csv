@@ -1,0 +1,8 @@
+cwe_id,example_id,entry_order,IntroText,Nature,Language,ExampleCode,BodyText
+395,DX-202,1,The following code mistakenly catches a NullPointerException.,NULL,NULL,NULL,NULL
+395,DX-202,2,NULL,Bad,Java,"```
+	try { 
+		 mysteryMethod(); 
+	 } catch (NullPointerException npe) {
+	 }
+```",NULL

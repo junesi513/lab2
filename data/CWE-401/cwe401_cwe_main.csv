@@ -1,0 +1,2 @@
+idx,ID,Name,Description,ExtendedDescription
+0,401,Missing Release of Memory after Effective Lifetime,"The product does not sufficiently track and release allocated memory after it has been used, making the memory unavailable for reallocation and reuse.",

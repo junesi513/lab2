@@ -1,0 +1,6 @@
+cwe_id,nature,related_cwe_id
+129,ChildOf,1285
+129,ChildOf,20
+129,CanPrecede,119
+129,CanPrecede,823
+129,CanPrecede,789

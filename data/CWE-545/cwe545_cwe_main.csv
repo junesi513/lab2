@@ -1,0 +1,2 @@
+idx,ID,Name,Description,ExtendedDescription
+0,545,DEPRECATED: Use of Dynamic Class Loading,"This weakness has been deprecated because it partially overlaps CWE-470, it describes legitimate programmer behavior, and other portions will need to be integrated into other entries.",

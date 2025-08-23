@@ -1,0 +1,39 @@
+cwe_id,example_id,entry_order,IntroText,Nature,Language,ExampleCode,BodyText
+1284,DX-135,1,This example demonstrates a shopping interaction in which the user is free to specify the quantity of items to be purchased and a total is calculated.,NULL,NULL,NULL,NULL
+1284,DX-135,2,NULL,Bad,Java,"```
+	...
+	public static final double price = 20.00;
+	int quantity = currentUser.getAttribute(""quantity"");
+	double total = price * quantity;
+	chargeUser(total);
+	...
+```",NULL
+1284,DX-135,3,NULL,NULL,NULL,NULL,"The user has no control over the price variable, however the code does not prevent a negative value from being specified for quantity. If an attacker were to provide a negative value, then the user would have their account credited instead of debited."
+1284,DX-136,1,This example asks the user for a height and width of an m X n game board with a maximum dimension of 100 squares.,NULL,NULL,NULL,NULL
+1284,DX-136,2,NULL,Bad,C,"```
+	...
+	#define MAX_DIM 100
+	...
+```
+/* board dimensions */* 
+	
+	int m,n, error;
+	board_square_t *board;
+	printf(""Please specify the board height: \n"");
+	error = scanf(""%d"", &m);
+	if ( EOF == error ){
+	```
+		die(""No integer passed: Die evil hacker!\n"");
+	}
+	printf(""Please specify the board width: \n"");
+	error = scanf(""%d"", &n);
+	if ( EOF == error ){
+		die(""No integer passed: Die evil hacker!\n"");
+	}
+	if ( m > MAX_DIM || n > MAX_DIM ) {
+		die(""Value too large: Die evil hacker!\n"");
+	}
+	board = (board_square_t*) malloc( m * n * sizeof(board_square_t));
+	...
+```",NULL
+1284,DX-136,3,NULL,NULL,NULL,NULL,"While this code checks to make sure the user cannot specify large, positive integers and consume too much memory, it does not check for negative values supplied by the user. As a result, an attacker can perform a resource consumption (CWE-400) attack against this program by specifying two, large negative values that will not overflow, resulting in a very large memory allocation (CWE-789) and possibly a system crash. Alternatively, an attacker can provide very large negative values which will cause an integer overflow (CWE-190) and unexpected behavior will follow depending on how the values are treated in the remainder of the program."

@@ -1,0 +1,69 @@
+cwe_id,example_id,entry_order,IntroText,Nature,Language,ExampleCode,BodyText
+843,DX-188,1,"The following code uses a union to support the representation of different types of messages. It formats messages differently, depending on their type.",NULL,NULL,NULL,NULL
+843,DX-188,2,NULL,Bad,C,"```
+	#define NAME_TYPE 1
+	#define ID_TYPE 2
+	struct MessageBuffer
+	{
+		int msgType;
+		union {
+			char *name;
+			int nameID;
+		};
+	};
+	int main (int argc, char **argv) {
+			struct MessageBuffer buf;
+			char *defaultMessage = ""Hello World"";
+			buf.msgType = NAME_TYPE;
+			buf.name = defaultMessage;
+			printf(""Pointer of buf.name is %p\n"", buf.name);
+```
+/* This particular value for nameID is used to make the code architecture-independent. If coming from untrusted input, it could be any value. */* 
+			
+			buf.nameID = (int)(defaultMessage + 1);
+			printf(""Pointer of buf.name is now %p\n"", buf.name);
+			if (buf.msgType == NAME_TYPE) {
+			```
+				printf(""Message: %s\n"", buf.name);
+			}
+			else {
+				printf(""Message: Use ID %d\n"", buf.nameID);
+			}
+	}
+```",NULL
+843,DX-188,3,NULL,NULL,NULL,NULL,"The code intends to process the message as a NAME_TYPE, and sets the default message to ""Hello World."" However, since both buf.name and buf.nameID are part of the same union, they can act as aliases for the same memory location, depending on memory layout after compilation."
+843,DX-188,4,NULL,NULL,NULL,NULL,"As a result, modification of buf.nameID - an int - can effectively modify the pointer that is stored in buf.name - a string."
+843,DX-188,5,NULL,NULL,NULL,NULL,Execution of the program might generate output such as:
+843,DX-188,6,NULL,NULL,NULL,NULL,``` Pointer of name is 10830 Pointer of name is now 10831 Message: ello World ```
+843,DX-188,7,NULL,NULL,NULL,NULL,"Notice how the pointer for buf.name was changed, even though buf.name was not explicitly modified."
+843,DX-188,8,NULL,NULL,NULL,NULL,"In this case, the first ""H"" character of the message is omitted. However, if an attacker is able to fully control the value of buf.nameID, then buf.name could contain an arbitrary pointer, leading to out-of-bounds reads or writes."
+843,GEN-2,1,"The following PHP code accepts a value, adds 5, and prints the sum.",NULL,NULL,NULL,NULL
+843,GEN-2,2,NULL,Bad,PHP,"```
+	$value = $_GET['value'];
+	$sum = $value + 5;
+	echo ""value parameter is '$value'<p>"";
+	echo ""SUM is $sum"";
+```",NULL
+843,GEN-2,3,NULL,NULL,NULL,NULL,When called with the following query string:
+843,GEN-2,4,NULL,NULL,NULL,NULL,``` value=123 ```
+843,GEN-2,5,NULL,NULL,NULL,NULL,the program calculates the sum and prints out:
+843,GEN-2,6,NULL,NULL,NULL,NULL,``` SUM is 128 ```
+843,GEN-2,7,NULL,NULL,NULL,NULL,"However, the attacker could supply a query string such as:"
+843,GEN-2,8,NULL,NULL,NULL,NULL,``` value[]=123 ```
+843,GEN-2,9,NULL,NULL,NULL,NULL,"The ""[]"" array syntax causes $value to be treated as an array type, which then generates a fatal error when calculating $sum:"
+843,GEN-2,10,NULL,NULL,NULL,NULL,``` Fatal error: Unsupported operand types in program.php on line 2 ```
+843,GEN-3,1,"The following Perl code is intended to look up the privileges for user ID's between 0 and 3, by performing an access of the $UserPrivilegeArray reference. It is expected that only userID 3 is an admin (since this is listed in the third element of the array).",NULL,NULL,NULL,NULL
+843,GEN-3,2,NULL,Bad,Perl,"```
+	my $UserPrivilegeArray = [""user"", ""user"", ""admin"", ""user""];
+	my $userID = get_current_user_ID();
+	if ($UserPrivilegeArray eq ""user"") {
+		print ""Regular user!\n"";
+	}
+	else {
+		print ""Admin!\n"";
+	}
+	print ""\$UserPrivilegeArray = $UserPrivilegeArray\n"";
+```",NULL
+843,GEN-3,3,NULL,NULL,NULL,NULL,"In this case, the programmer intended to use ""$UserPrivilegeArray->{$userID}"" to access the proper position in the array. But because the subscript was omitted, the ""user"" string was compared to the scalar representation of the $UserPrivilegeArray reference, which might be of the form ""ARRAY(0x229e8)"" or similar."
+843,GEN-3,4,NULL,NULL,NULL,NULL,"Since the logic also ""fails open"" (CWE-636), the result of this bug is that all users are assigned administrator privileges."
+843,GEN-3,5,NULL,NULL,NULL,NULL,"While this is a forced example, it demonstrates how type confusion can have security consequences, even in memory-safe languages."

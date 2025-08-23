@@ -1,0 +1,31 @@
+cwe_id,example_id,entry_order,IntroText,Nature,Language,ExampleCode,BodyText
+130,DX-91,1,"In the following C/C++ example the method processMessageFromSocket() will get a message from a socket, placed into a buffer, and will parse the contents of the buffer into a structure that contains the message length and the message body. A for loop is used to copy the message body into a local character string which will be passed to another method for processing.",NULL,NULL,NULL,NULL
+130,DX-91,2,NULL,Bad,C,"```
+	int processMessageFromSocket(int socket) {
+			int success;
+			char buffer[BUFFER_SIZE];
+			char message[MESSAGE_SIZE];
+```
+// get message from socket and store into buffer* 
+			
+			
+			 *//Ignoring possibliity that buffer > BUFFER_SIZE* 
+			if (getMessage(socket, buffer, BUFFER_SIZE) > 0) {
+			```
+```
+// place contents of the buffer into message structure* 
+					ExMessage *msg = recastBuffer(buffer);
+					
+					
+					 *// copy message body into string for processing* 
+					int index;
+					for (index = 0; index < msg->msgLength; index++) {
+					```
+						message[index] = msg->msgBody[index];
+					}
+					message[index] = '\0';
+```
+// process message* 
+					success = processMessage(message);}
+			return success;}",NULL
+130,DX-91,3,NULL,NULL,NULL,NULL,"However, the message length variable from the structure is used as the condition for ending the for loop without validating that the message length variable accurately reflects the length of the message body (CWE-606). This can result in a buffer over-read (CWE-125) by reading from memory beyond the bounds of the buffer if the message length variable indicates a length that is longer than the size of a message body (CWE-130)."

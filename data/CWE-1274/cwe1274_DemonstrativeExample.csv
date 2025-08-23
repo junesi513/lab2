@@ -1,0 +1,5 @@
+cwe_id,example_id,entry_order,IntroText,Nature,Language,ExampleCode,BodyText
+1274,GEN-1,1,"A typical SoC secure boot's flow includes fetching the next piece of code (i.e., the boot loader) from NVM (e.g., serial, peripheral interface (SPI) flash), and transferring it to DRAM/SRAM volatile, internal memory, which is more efficient.",NULL,NULL,NULL,NULL
+1274,GEN-1,2,NULL,Bad,Other,The volatile-memory protections or access controls are insufficient.,NULL
+1274,GEN-1,3,NULL,NULL,NULL,NULL,The memory from where the boot loader executes can be modified by an adversary.
+1274,GEN-1,4,NULL,Good,Other,"A good architecture should define appropriate protections or access controls to prevent modification by an adversary or untrusted agent, once the bootloader is authenticated.",NULL

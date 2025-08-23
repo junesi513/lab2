@@ -1,0 +1,11 @@
+cwe_id,example_id,entry_order,IntroText,Nature,Language,ExampleCode,BodyText
+680,DX-33,1,The following image processing code allocates a table for images.,NULL,NULL,NULL,NULL
+680,DX-33,2,NULL,Bad,C,"```
+	img_t table_ptr; /*struct containing img data, 10kB each*/
+	int num_imgs;
+	...
+	num_imgs = get_num_imgs();
+	table_ptr = (img_t*)malloc(sizeof(img_t)*num_imgs);
+	...
+```",NULL
+680,DX-33,3,NULL,NULL,NULL,NULL,"This code intends to allocate a table of size num_imgs, however as num_imgs grows large, the calculation determining the size of the list will eventually overflow (CWE-190). This will result in a very small list to be allocated instead. If the subsequent code operates on the list as if it were num_imgs long, it may result in many types of out-of-bounds problems (CWE-119)."

@@ -1,0 +1,24 @@
+cwe_id,example_id,entry_order,IntroText,Nature,Language,ExampleCode,BodyText
+112,GEN-1,1,The following code loads and parses an XML file.,NULL,NULL,NULL,NULL
+112,GEN-1,2,NULL,Bad,Java,"```
+```
+// Read DOM* 
+	try {
+	```
+		...
+		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+		factory.setValidating( false );
+		....
+		c_dom = factory.newDocumentBuilder().parse( xmlFile );
+	} catch(Exception ex) {
+		...
+	}
+```",NULL
+112,GEN-1,3,NULL,NULL,NULL,NULL,The XML file is loaded without validating it against a known XML Schema or DTD.
+112,GEN-2,1,The following code creates a DocumentBuilder object to be used in building an XML document.,NULL,NULL,NULL,NULL
+112,GEN-2,2,NULL,Bad,Java,"```
+	DocumentBuilderFactory builderFactory = DocumentBuilderFactory.newInstance();
+	builderFactory.setNamespaceAware(true);
+	DocumentBuilder builder = builderFactory.newDocumentBuilder();
+```",NULL
+112,GEN-2,3,NULL,NULL,NULL,NULL,"The DocumentBuilder object does not validate an XML document against a schema, making it possible to create an invalid XML document."

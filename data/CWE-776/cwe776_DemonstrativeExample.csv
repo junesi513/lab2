@@ -1,0 +1,13 @@
+cwe_id,example_id,entry_order,IntroText,Nature,Language,ExampleCode,BodyText
+776,DX-53,1,"The DTD and the very brief XML below illustrate what is meant by an XML bomb. The ZERO entity contains one character, the letter A. The choice of entity name ZERO is being used to indicate length equivalent to that exponent on two, that is, the length of ZERO is 2^0. Similarly, ONE refers to ZERO twice, therefore the XML parser will expand ONE to a length of 2, or 2^1. Ultimately, we reach entity THIRTYTWO, which will expand to 2^32 characters in length, or 4 GB, probably consuming far more data than expected.",NULL,NULL,NULL,NULL
+776,DX-53,2,NULL,Attack,XML,"```
+	<?xml version=""1.0""?>
+	<!DOCTYPE MaliciousDTD [
+	<!ENTITY ZERO ""A"">
+	<!ENTITY ONE ""&ZERO;&ZERO;"">
+	<!ENTITY TWO ""&ONE;&ONE;"">
+	...
+	<!ENTITY THIRTYTWO ""&THIRTYONE;&THIRTYONE;"">
+	]>
+	<data>&THIRTYTWO;</data>
+```",NULL

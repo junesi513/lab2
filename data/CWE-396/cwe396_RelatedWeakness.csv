@@ -1,0 +1,4 @@
+cwe_id,nature,related_cwe_id
+396,ChildOf,705
+396,ChildOf,755
+396,ChildOf,221

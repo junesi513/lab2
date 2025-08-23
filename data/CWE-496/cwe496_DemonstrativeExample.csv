@@ -1,0 +1,8 @@
+cwe_id,example_id,entry_order,IntroText,Nature,Language,ExampleCode,BodyText
+496,GEN-1,1,"In the example below, the setRoles() method assigns a publically-controllable array to a private field, thus allowing the caller to modify the private array directly by virtue of the fact that arrays in Java are mutable.",NULL,NULL,NULL,NULL
+496,GEN-1,2,NULL,Bad,Java,"```
+	private String[] userRoles;
+	public void setUserRoles(String[] userRoles) {
+		this.userRoles = userRoles;
+	}
+```",NULL

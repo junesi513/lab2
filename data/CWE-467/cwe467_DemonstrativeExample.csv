@@ -1,0 +1,67 @@
+cwe_id,example_id,entry_order,IntroText,Nature,Language,ExampleCode,BodyText
+467,GEN-1,1,"Care should be taken to ensure sizeof returns the size of the data structure itself, and not the size of the pointer to the data structure.",NULL,NULL,NULL,NULL
+467,GEN-1,2,NULL,NULL,NULL,NULL,"In this example, sizeof(foo) returns the size of the pointer."
+467,GEN-1,3,NULL,Bad,C,"```
+	double *foo;
+	...
+	foo = (double *)malloc(sizeof(foo));
+```",NULL
+467,GEN-1,4,NULL,NULL,NULL,NULL,"In this example, sizeof(*foo) returns the size of the data structure and not the size of the pointer."
+467,GEN-1,5,NULL,Good,C,"```
+	double *foo;
+	...
+	foo = (double *)malloc(sizeof(*foo));
+```",NULL
+467,GEN-2,1,"This example defines a fixed username and password. The AuthenticateUser() function is intended to accept a username and a password from an untrusted user, and check to ensure that it matches the username and password. If the username and password match, AuthenticateUser() is intended to indicate that authentication succeeded.",NULL,NULL,NULL,NULL
+467,GEN-2,2,NULL,Bad,C,"```
+```
+/* Ignore CWE-259 (hard-coded password) and CWE-309 (use of password system for authentication) for this example. */* 
+	
+	char *username = ""admin"";
+	char *pass = ""password"";
+	
+	int AuthenticateUser(char *inUser, char *inPass) {
+	```
+			printf(""Sizeof username = %d\n"", sizeof(username));
+			printf(""Sizeof pass = %d\n"", sizeof(pass));
+			if (strncmp(username, inUser, sizeof(username))) {
+				printf(""Auth failure of username using sizeof\n"");
+				return(AUTH_FAIL);
+			}
+```
+/* Because of CWE-467, the sizeof returns 4 on many platforms and architectures. */* 
+			
+			if (! strncmp(pass, inPass, sizeof(pass))) {
+			```
+				printf(""Auth success of password using sizeof\n"");
+				return(AUTH_SUCCESS);
+			}
+			else {
+				printf(""Auth fail of password using sizeof\n"");
+				return(AUTH_FAIL);
+			}
+	}
+	int main (int argc, char **argv)
+	{
+			int authResult;
+			if (argc < 3) {
+				ExitError(""Usage: Provide a username and password"");
+			}
+			authResult = AuthenticateUser(argv[1], argv[2]);
+			if (authResult != AUTH_SUCCESS) {
+				ExitError(""Authentication failed"");
+			}
+			else {
+				DoAuthenticatedTask(argv[1]);
+			}
+	}
+```",NULL
+467,GEN-2,3,NULL,NULL,NULL,NULL,"In AuthenticateUser(), because sizeof() is applied to a parameter with an array type, the sizeof() call might return 4 on many modern architectures. As a result, the strncmp() call only checks the first four characters of the input password, resulting in a partial comparison (CWE-187), leading to improper authentication (CWE-287)."
+467,GEN-2,4,NULL,NULL,NULL,NULL,"Because of the partial comparison, any of these passwords would still cause authentication to succeed for the ""admin"" user:"
+467,GEN-2,5,NULL,Attack,NULL,"```
+	pass5
+	passABCDEFGH
+	passWORD
+```",NULL
+467,GEN-2,6,NULL,NULL,NULL,NULL,"Because only 4 characters are checked, this significantly reduces the search space for an attacker, making brute force attacks more feasible."
+467,GEN-2,7,NULL,NULL,NULL,NULL,"The same problem also applies to the username, so values such as ""adminXYZ"" and ""administrator"" will succeed for the username."

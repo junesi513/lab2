@@ -1,0 +1,173 @@
+cwe_id,example_id,entry_order,IntroText,Nature,Language,ExampleCode,BodyText
+129,GEN-1,1,"In the code snippet below, an untrusted integer value is used to reference an object in an array.",NULL,NULL,NULL,NULL
+129,GEN-1,2,NULL,Bad,Java,"```
+	public String getValue(int index) {
+		return array[index];
+	}
+```",NULL
+129,GEN-1,3,NULL,NULL,NULL,NULL,"If index is outside of the range of the array, this may result in an ArrayIndexOutOfBounds Exception being raised."
+129,DX-34,1,The following example takes a user-supplied value to allocate an array of objects and then operates on the array.,NULL,NULL,NULL,NULL
+129,DX-34,2,NULL,Bad,Java,"```
+	private void buildList ( int untrustedListSize ){
+		if ( 0 > untrustedListSize ){
+			die(""Negative value supplied for list size, die evil hacker!"");
+		}
+		Widget[] list = new Widget [ untrustedListSize ];
+		list[0] = new Widget();
+	}
+```",NULL
+129,DX-34,3,NULL,NULL,NULL,NULL,"This example attempts to build a list from a user-specified value, and even checks to ensure a non-negative value is supplied. If, however, a 0 value is provided, the code will build an array of size 0 and then try to store a new Widget in the first location, causing an exception to be thrown."
+129,DX-100,1,"In the following code, the method retrieves a value from an array at a specific array index location that is given as an input parameter to the method",NULL,NULL,NULL,NULL
+129,DX-100,2,NULL,Bad,C,"```
+	int getValueFromArray(int *array, int len, int index) {
+			int value;
+```
+// check that the array index is less than the maximum* 
+			
+			
+			 *// length of the array* 
+			if (index < len) {
+			```
+```
+// get the value at the specified index of the array* 
+					value = array[index];}
+			
+			 *// if array index is invalid then output error message* 
+			
+			
+			 *// and return value indicating error* 
+			else {
+			```
+				printf(""Value is: %d\n"", array[index]);
+				value = -1;
+			}
+			return value;
+	}
+```",NULL
+129,DX-100,3,NULL,NULL,NULL,NULL,"However, this method only verifies that the given array index is less than the maximum length of the array but does not check for the minimum value (CWE-839). This will allow a negative value to be accepted as the input array index, which will result in a out of bounds read (CWE-125) and may allow access to sensitive memory. The input array index should be checked to verify that is within the maximum and minimum range required for the array (CWE-129). In this example the if statement should be modified to include a minimum range check, as shown below."
+129,DX-100,4,NULL,Good,C,"```
+	...
+```
+// check that the array index is within the correct* 
+	
+	
+	 *// range of values for the array* 
+	if (index >= 0 && index < len) {
+	
+	...",NULL
+129,DX-134,1,"The following example retrieves the sizes of messages for a pop3 mail server. The message sizes are retrieved from a socket that returns in a buffer the message number and the message size, the message number (num) and size (size) are extracted from the buffer and the message size is placed into an array using the message number for the array index.",NULL,NULL,NULL,NULL
+129,DX-134,2,NULL,Bad,C,"```
+```
+/* capture the sizes of all messages */* 
+	int getsizes(int sock, int count, int *sizes) {
+	```
+			...
+			char buf[BUFFER_SIZE];
+			int ok;
+			int num, size;
+```
+// read values from socket and added to sizes array* 
+			while ((ok = gen_recv(sock, buf, sizeof(buf))) == 0)
+			{
+			```
+```
+// continue read from socket until buf only contains '.'* 
+					if (DOTLINE(buf))
+					```
+						break;
+					 else if (sscanf(buf, ""%d %d"", &num, &size) == 2)
+						sizes[num - 1] = size;
+			}
+				...
+	}
+```",NULL
+129,DX-134,3,NULL,NULL,NULL,NULL,In this example the message number retrieved from the buffer could be a value that is outside the allowable range of indices for the array and could possibly be a negative number. Without proper validation of the value to be used for the array index an array overflow could occur and could potentially lead to unauthorized access to memory addresses and system crashes. The value of the array index should be validated to ensure that it is within the allowable range of indices for the array as in the following code.
+129,DX-134,4,NULL,Good,C,"```
+```
+/* capture the sizes of all messages */* 
+	int getsizes(int sock, int count, int *sizes) {
+	```
+			...
+			char buf[BUFFER_SIZE];
+			int ok;
+			int num, size;
+```
+// read values from socket and added to sizes array* 
+			while ((ok = gen_recv(sock, buf, sizeof(buf))) == 0)
+			{
+			```
+```
+// continue read from socket until buf only contains '.'* 
+					if (DOTLINE(buf))
+					```
+						break;
+					else if (sscanf(buf, ""%d %d"", &num, &size) == 2) {
+							if (num > 0 && num <= (unsigned)count)
+								sizes[num - 1] = size;
+							else
+```
+/* warn about possible attempt to induce buffer overflow */* 
+									report(stderr, ""Warning: ignoring bogus data for message sizes returned by server.\n"");}}
+			```
+				...
+	}
+```",NULL
+129,DX-133,1,In the following example the method displayProductSummary is called from a Web service servlet to retrieve product summary information for display to the user. The servlet obtains the integer value of the product number from the user and passes it to the displayProductSummary method. The displayProductSummary method passes the integer value of the product number to the getProductSummary method which obtains the product summary from the array object containing the project summaries using the integer value of the product number as the array index.,NULL,NULL,NULL,NULL
+129,DX-133,2,NULL,Bad,Java,"```
+```
+// Method called from servlet to obtain product information* 
+	public String displayProductSummary(int index) {
+	
+	```
+			String productSummary = new String("""");
+			try {
+				String productSummary = getProductSummary(index);
+			} catch (Exception ex) {...}
+			return productSummary;
+	}
+	public String getProductSummary(int index) {
+		return products[index];
+	}
+```",NULL
+129,DX-133,3,NULL,NULL,NULL,NULL,In this example the integer value used as the array index that is provided by the user may be outside the allowable range of indices for the array which may provide unexpected results or cause the application to fail. The integer value used for the array index should be validated to ensure that it is within the allowable range of indices for the array as in the following code.
+129,DX-133,4,NULL,Good,Java,"```
+```
+// Method called from servlet to obtain product information* 
+	public String displayProductSummary(int index) {
+	
+	```
+			String productSummary = new String("""");
+			try {
+				String productSummary = getProductSummary(index);
+			} catch (Exception ex) {...}
+			return productSummary;
+	}
+	public String getProductSummary(int index) {
+			String productSummary = """";
+			if ((index >= 0) && (index < MAX_PRODUCTS)) {
+				productSummary = products[index];
+			}
+			else {
+				System.err.println(""index is out of bounds"");
+				throw new IndexOutOfBoundsException();
+			}
+			return productSummary;
+	}
+```",NULL
+129,DX-133,5,NULL,NULL,NULL,NULL,An alternative in Java would be to use one of the collection objects such as ArrayList that will automatically generate an exception if an attempt is made to access an array index that is out of bounds.
+129,DX-133,6,NULL,Good,Java,"```
+	ArrayList productArray = new ArrayList(MAX_PRODUCTS);
+	...
+	try {
+		productSummary = (String) productArray.get(index);
+	} catch (IndexOutOfBoundsException ex) {...}
+```",NULL
+129,DX-90,1,The following example asks a user for an offset into an array to select an item.,NULL,NULL,NULL,NULL
+129,DX-90,2,NULL,Bad,C,"```
+	int main (int argc, char **argv) {
+		char *items[] = {""boat"", ""car"", ""truck"", ""train""};
+		int index = GetUntrustedOffset();
+		printf(""You selected %s\n"", items[index-1]);
+	}
+```",NULL
+129,DX-90,3,NULL,NULL,NULL,NULL,"The programmer allows the user to specify which element in the list to select, however an attacker can provide an out-of-bounds offset, resulting in a buffer over-read (CWE-126)."

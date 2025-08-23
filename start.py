@@ -101,6 +101,8 @@ class Vulnerability(BaseModel):
     vulnerability: str = Field(description="Description of the vulnerability")
     explanation: str = Field(description="Explanation of why this is a vulnerability")
     fix: str = Field(description="Suggested fix for the vulnerability")
+    confidence: float = Field(description="Confidence score for the vulnerability, from 0.7 to 1.0, based on the likelihood of it being a true positive and exploitable.")
+    keywords: List[str] = Field(description="A list of technical keywords related to the vulnerability.")
 
 class Vulnerabilities(BaseModel):
     vulnerabilities: List[Vulnerability] = Field(description="A list of vulnerabilities found in the code")
@@ -116,22 +118,23 @@ class KeywordList(BaseModel):
 class CweValidationResult(BaseModel):
     is_similar: bool = Field(description="True if the original vulnerability description is a valid instance of the CWE, False otherwise.")
     reasoning: str = Field(description="A brief justification for the is_similar decision.")
+    confidence: float = Field(description="A confidence score from 0.0 to 1.0 for the similarity judgment.")
 
-class RelationshipValidationResult(BaseModel):
-    is_relationship_valid: bool = Field(description="True if the relationship between the CWEs is logically valid in the context of the original vulnerability.")
-    relationship: str = Field(description="A descriptive string of the relationship, e.g., 'CWE-20 Can Lead To CWE-704'.")
-    justification: str = Field(description="A brief explanation for the validation decision.")
-    confidence: float = Field(description="A confidence score from 0.0 to 1.0 indicating the certainty of the relationship's validity.")
-    
-class AttackScenario(BaseModel):
-    scenario_title: str = Field(description="A concise title for the attack scenario.")
-    scenario_description: str = Field(description="A detailed step-by-step description of how the attack could be executed.")
-    cwe_scenario: str = Field(description="The CWE relationship chain that enables the scenario, e.g., 'CWE-502 mayCause CWE-20'.")
-    confidence: float = Field(description="The confidence score for the attack scenario, from 0.7 to 1.0.")
-    severity: str = Field(description="The severity of the attack scenario ('High', 'Medium', 'Low').")
+class FinalAnalysis(BaseModel):
+    root_cause: str = Field(description="The fundamental security weakness based on the primary CWEs.")
+    cwe_relation: str = Field(description="A logical chain of how the confirmed CWEs could be linked or exploited together.")
+    vulnerability_scenario: str = Field(description="A plausible, concrete narrative of how an attacker might exploit the vulnerability.")
 
-class AttackScenarios(BaseModel):
-    attack_scenarios: List[AttackScenario] = Field(description="A list of potential attack scenarios based on the analysis.")
+class VulnerabilityDetail(BaseModel):
+    vulnerability_id: int
+    description: str
+    suggested_fix: str
+    confirmed_cwes: List[dict] = Field(description="List of CWEs confirmed to be related, including ID, confidence, and reasoning.")
+    analysis: FinalAnalysis
+
+class FinalReport(BaseModel):
+    analysis_summary: dict
+    vulnerability_details: List[VulnerabilityDetail]
 
 
 def get_llm(model_str: str, api_keys: dict):
@@ -279,15 +282,6 @@ def run_batch_chat_task(llm, model_name, logger=None):
 def run_code_chat_task(llm, model_name, code_file_pattern, system_id, user_id, logger=None):
     """Reads code from files matching a glob pattern and performs a chat task."""
     
-    # Pydantic model for the desired output
-    class Vulnerability(BaseModel):
-        vulnerability: str = Field(description="Description of the vulnerability")
-        explanation: str = Field(description="Explanation of why this is a vulnerability")
-        fix: str = Field(description="Suggested fix for the vulnerability")
-
-    class Vulnerabilities(BaseModel):
-        vulnerabilities: list[Vulnerability] = Field(description="A list of vulnerabilities found in the code")
-
     parser = PydanticOutputParser(pydantic_object=Vulnerabilities)
 
     try:
@@ -382,30 +376,16 @@ def run_code_chat_task(llm, model_name, code_file_pattern, system_id, user_id, l
         print(raw_output)
 
 
-def run_full_analysis_pipeline(llm, model_name, code_file_pattern, depth: int, logger=None):
+def run_vulnerability_analysis_pipeline(llm, model_name, code_file_pattern, keyword_search_results: int = 5, keyword_depth: int = 3, logger=None):
     """
-    Performs a four-step security analysis pipeline:
-    1. Analyze code for vulnerabilities.
-    2. Extract keywords and CWE-ID from the result.
-    3. Validate the CWE-ID against a local RAG DB and check for similarity.
-    4. For validated CWEs, traverse the CWE Knowledge Graph to identify and validate relevant relationships.
+    Performs a security analysis on code files to find vulnerabilities.
+    This is the main analysis pipeline.
     """
     step1_result = None
-    step2_result = None
-    step3_results = []
-    step4_results = [] # To store validated CWE relationships
 
     # --- [Step 1] First Analysis: Find vulnerabilities ---
     print("\n--- [Step 1] Running initial vulnerability analysis... ---")
     
-    class Vulnerability(BaseModel):
-        vulnerability: str = Field(description="Description of the vulnerability")
-        explanation: str = Field(description="Explanation of why this is a vulnerability")
-        fix: str = Field(description="Suggested fix for the vulnerability")
-
-    class Vulnerabilities(BaseModel):
-        vulnerabilities: list[Vulnerability] = Field(description="A list of vulnerabilities found in the code")
-
     first_parser = PydanticOutputParser(pydantic_object=Vulnerabilities)
 
     try:
@@ -415,7 +395,7 @@ def run_full_analysis_pipeline(llm, model_name, code_file_pattern, depth: int, l
             print(f"[Error] No files found matching pattern: {code_file_pattern}")
             return
         
-        user_code_parts = []
+        user_code = ""
         print("Analyzing the following files:")
         for file_path in file_paths:
             print(f"- {file_path}")
@@ -423,294 +403,275 @@ def run_full_analysis_pipeline(llm, model_name, code_file_pattern, depth: int, l
                 content = f.read()
             header = f"--- START OF FILE: {os.path.basename(file_path)} ---\n"
             footer = f"\n--- END OF FILE: {os.path.basename(file_path)} ---"
-            user_code_parts.append(f"{header}{content}{footer}")
-        user_code = "\n\n".join(user_code_parts)
-    except Exception as e:
-        print(f"[Error] Failed to read code files: {e}")
-        return
+            user_code += f"{header}{content}{footer}\n\n"
+        
+        system_prompt = SYSTEM_PROMPTS.get("role_security_analysis")
+        first_user_prompt_template = USER_PROMPTS.get("first_request_security_analysis")
+        first_user_prompt = first_user_prompt_template.format(
+            user_code=user_code,
+            format_instructions=first_parser.get_format_instructions()
+        )
 
-    system_prompt = SYSTEM_PROMPTS.get("role_security_analysis")
-    first_user_prompt_template = USER_PROMPTS.get("first_request_security_analysis")
-    
-    first_user_prompt = first_user_prompt_template.format(
-        user_code=user_code,
-        format_instructions=first_parser.get_format_instructions()
-    )
+        if logger:
+            logger.info("\n==================== [Step 1] LLM REQUEST ====================")
+            logger.info(f"SYSTEM PROMPT: {system_prompt}")
+            logger.info(f"USER PROMPT (TEMPLATE): {first_user_prompt_template}")
+            logger.info("==========================================================")
 
-    first_prompt_template = PromptTemplate(
-        template="""
-{system_prompt}
+        first_chain = PromptTemplate.from_template(
+            template="{system_prompt}\n\n{user_prompt}"
+        ) | llm | first_parser
+        step1_result = first_chain.invoke({
+            "system_prompt": system_prompt,
+            "user_prompt": first_user_prompt
+        })
+        if logger:
+            logger.info("\n==================== [Step 1] LLM RESPONSE ===================")
+            logger.info(step1_result.model_dump_json(indent=2))
+            logger.info("==========================================================")
 
-{user_prompt}
-""",
-        input_variables=["system_prompt", "user_prompt"],
-    )
-    
-    first_chain = first_prompt_template | llm | first_parser
-    
-    try:
-        step1_result = first_chain.invoke({"system_prompt": system_prompt, "user_prompt": first_user_prompt})
         print("\n--- [Step 1] Analysis Result ---")
         print(json.dumps(step1_result.model_dump(), indent=2, ensure_ascii=False))
-    except OutputParserException as e:
-        print(f"\n[Parsing Error in Step 1] Failed to parse LLM response: {e}")
-        raw_output = str(e.llm_output) if hasattr(e, 'llm_output') else str(e)
-        print("\n--- LLM Raw Response ---")
-        print(raw_output)
+    except Exception as e:
+        print(f"An error occurred during Step 1: {e}")
         return
 
-    # --- [Step 2] Second Analysis: Extract keywords and CWE-ID ---
-    print("\n--- [Step 2] Extracting keywords and CWE-ID from the analysis result... ---")
+    # This set will store all unique CWE IDs found across all vulnerabilities
+    all_cwe_ids_to_crawl = set()
+    # This list will store the validation tasks to be performed in Step 4
+    step4_validation_tasks = []
 
-    class KeywordResult(BaseModel):
-        vulnerability: str = Field(description="Original vulnerability description")
-        keywords: list[str] = Field(description="A list of extracted keywords")
-        cwe_id: str = Field(description="The most relevant CWE-ID for the vulnerability, e.g., 'CWE-74'")
-
-    class KeywordList(BaseModel):
-        vulnerability_keywords: list[KeywordResult] = Field(description="A list of vulnerabilities with their keywords and CWE-IDs")
-
-    second_parser = PydanticOutputParser(pydantic_object=KeywordList)
-    
-    second_user_prompt_template = USER_PROMPTS.get("second_request_security_analysis")
-
-    second_user_prompt = second_user_prompt_template.format(
-        first_analysis_result=json.dumps(step1_result.model_dump(), indent=2),
-        format_instructions=second_parser.get_format_instructions()
-    )
-
-    second_prompt_template = PromptTemplate(
-        template="""
-{system_prompt}
-
-{user_prompt}
-""",
-        input_variables=["system_prompt", "user_prompt"],
-    )
-
-    second_chain = second_prompt_template | llm | second_parser
-
-    try:
-        step2_result = second_chain.invoke({"system_prompt": system_prompt, "user_prompt": second_user_prompt})
-        print("\n--- [Step 2] Keyword Extraction Result ---")
-        print(json.dumps(step2_result.model_dump(), indent=2, ensure_ascii=False))
-    except OutputParserException as e:
-        print(f"\n[Parsing Error in Step 2] Failed to parse LLM response: {e}")
-        raw_output = str(e.llm_output) if hasattr(e, 'llm_output') else str(e)
-        print("\n--- LLM Raw Response ---")
-        print(raw_output)
-        return
-
-    # --- [Step 3] Third Analysis: Validate CWE-ID and check similarity ---
-    print("\n--- [Step 3] Validating CWE-ID against local RAG DB... ---")
-
-    class CweValidationResult(BaseModel):
-        is_similar: bool = Field(description="True if the descriptions refer to the same weakness, False otherwise.")
-        reasoning: str = Field(description="A brief justification for the similarity decision.")
-
-    third_parser = PydanticOutputParser(pydantic_object=CweValidationResult)
-    third_user_prompt_template = USER_PROMPTS.get("third_request_cwe_validation")
-
-    # --- [Step 4] Pydantic Model Definition for Relationship Analysis ---
-    class RelationshipValidationResult(BaseModel):
-        is_relationship_valid: bool = Field(description="True if the relationship is logically valid in the context of the original vulnerability.")
-        relationship: str = Field(description="A description of the validated relationship, e.g., 'CWE-20 can lead to CWE-502'.")
-        justification: str = Field(description="A brief justification for the validation decision.")
-        confidence: float = Field(description="A confidence score from 0.0 to 1.0 indicating the certainty of the relationship's validity.")
-
-    fourth_parser = PydanticOutputParser(pydantic_object=RelationshipValidationResult)
-    fourth_user_prompt_template = USER_PROMPTS.get("fifth_request_relationship_analysis")
-
-    for item in step2_result.vulnerability_keywords:
-        original_vulnerability_description = item.vulnerability
-        initial_cwe_id = item.cwe_id.replace("CWE-", "")
-        print(f"\n--- Starting validation and KG traversal for vulnerability: '{original_vulnerability_description}' (starting with CWE-{initial_cwe_id}) ---")
-        
-        # This vulnerability's specific results will be stored here
-        current_vuln_step3_results = []
-        current_vuln_step4_results = []
-        validated_chains = [] # Store full validated paths here
-
-        # --- Knowledge Graph Traversal using Breadth-First Search ---
-        # Queue now stores (cwe_id, current_depth, path_list)
-        cwe_to_process = [(initial_cwe_id, 0, [initial_cwe_id])] 
-        processed_cwes = set()
-
-        while cwe_to_process:
-            source_cwe_id, current_depth, current_path = cwe_to_process.pop(0)
-
-            if source_cwe_id in processed_cwes:
+    # --- [Step 2] Mine CWE IDs for each vulnerability ---
+    if step1_result and step1_result.vulnerabilities:
+        print(f"\n--- [Step 2] Mining CWE IDs for {len(step1_result.vulnerabilities)} vulnerabilities... ---")
+        if logger:
+            logger.info(f"\n--- [Step 2] Mining CWE IDs for {len(step1_result.vulnerabilities)} vulnerabilities... ---")
+        for i, vuln in enumerate(step1_result.vulnerabilities, 1):
+            print(f"\n--- Processing Vulnerability #{i}: {vuln.vulnerability} ---")
+            if not vuln.keywords:
+                print("No keywords found for this vulnerability.")
                 continue
-            processed_cwes.add(source_cwe_id)
+
+            keywords_to_search = vuln.keywords[:keyword_depth]
+            print(f"Using top {len(keywords_to_search)} keywords for search: {', '.join(keywords_to_search)}")
+            if logger:
+                logger.info(f"\n--- Processing Vulnerability #{i}: {vuln.vulnerability} ---")
+                logger.info(f"Using top {len(keywords_to_search)} keywords for search: {', '.join(keywords_to_search)}")
+
+            vuln_specific_cwe_ids = set()
+
+            for keyword in keywords_to_search:
+                print(f"Searching for keyword: '{keyword}'...")
+                if logger:
+                    logger.info(f"Searching for keyword: '{keyword}'...")
+                try:
+                    mining_command = [
+                        "python3", "mining_cwe.py",
+                        "--keyword", keyword,
+                        "--num-results", str(keyword_search_results)
+                    ]
+                    mining_result = subprocess.run(mining_command, check=True, capture_output=True, text=True)
+                    
+                    cwe_ids_from_keyword = re.findall(r'CWE-(\d+)', mining_result.stdout)
+                    if logger:
+                        logger.info(f"  Result for '{keyword}': {mining_result.stdout.strip()}")
+                    if cwe_ids_from_keyword:
+                        print(f"  Found CWEs: {', '.join(cwe_ids_from_keyword)}")
+                        vuln_specific_cwe_ids.update(cwe_ids_from_keyword)
+                    else:
+                        print("  No CWEs found for this keyword.")
+
+                except Exception as e:
+                    print(f"Error running mining_cwe.py for keyword '{keyword}': {e}")
+                    if logger:
+                        logger.error(f"Error running mining_cwe.py for keyword '{keyword}': {e}")
             
-            try:
-                # Step 3 is now inside the loop: Validate the current CWE in the traversal
-                print(f"\n[Step 3] Validating CWE-{source_cwe_id} at depth {current_depth}...")
-                source_cwe_dir = f"data/CWE-{source_cwe_id}"
-                if not os.path.isdir(source_cwe_dir):
-                    print(f"[Info] Local data for CWE-{source_cwe_id} not found. Running crawler...")
-                    subprocess.run(["python3", "crawling_cwe.py", "--cwe-id", source_cwe_id], check=True)
-
-                source_csv_path = os.path.join(source_cwe_dir, f"cwe{source_cwe_id}_cwe_main.csv")
-                if not os.path.exists(source_csv_path):
-                    print(f"[Error] Main CSV for source CWE-{source_cwe_id} not found.")
-                    continue
-                
-                df_source = pd.read_csv(source_csv_path)
-                source_cwe_description = df_source['Description'].iloc[0] if not df_source.empty else "Description not found."
-
-                third_user_prompt = third_user_prompt_template.format(
-                    original_vulnerability_description=original_vulnerability_description,
-                    cwe_database_description=source_cwe_description,
-                    format_instructions=third_parser.get_format_instructions()
-                )
-                
-                third_chain = PromptTemplate(
-                    template="""
-{system_prompt}
-
-{user_prompt}
-""",
-                    input_variables=["system_prompt", "user_prompt"],
-                ) | llm | third_parser
-                step3_single_result = third_chain.invoke({"system_prompt": system_prompt, "user_prompt": third_user_prompt})
-                
-                print(f"[Result] Similarity Check for CWE-{source_cwe_id}: {step3_single_result.is_similar}")
-                current_vuln_step3_results.append({
-                    "cwe_id": f"CWE-{source_cwe_id}",
-                    "depth": current_depth,
-                    "validation_result": step3_single_result.model_dump()
+            if vuln_specific_cwe_ids:
+                all_cwe_ids_to_crawl.update(vuln_specific_cwe_ids)
+                step4_validation_tasks.append({
+                    "vulnerability_id": i,
+                    "vulnerability": vuln,
+                    "cwe_ids_to_validate": vuln_specific_cwe_ids
                 })
 
-                # If not similar, or max depth reached, stop traversing this path
-                if not step3_single_result.is_similar or current_depth >= depth:
-                    if current_depth >= depth:
-                        print(f"[Info] Reached max depth of {depth}. Stopping traversal from CWE-{source_cwe_id}.")
-                    # Even if we stop, if the path is longer than one, it's a chain.
-                    if len(current_path) > 1:
-                        # Format the chain for logging/output
-                        chain_str = " -> ".join([f"CWE-{cwe}" for cwe in current_path])
-                        validated_chains.append(chain_str)
-                    continue
+    # --- [Step 3] Crawl all unique CWEs found ---
+    if all_cwe_ids_to_crawl:
+        print(f"\n--- [Step 3] Crawling details for {len(all_cwe_ids_to_crawl)} unique CWEs... ---")
+        if logger:
+            logger.info(f"\n--- [Step 3] Crawling details for {len(all_cwe_ids_to_crawl)} unique CWEs... ---")
+        for cwe_id in sorted(list(all_cwe_ids_to_crawl), key=int):
+            if os.path.exists(f"data/CWE-{cwe_id}"):
+                print(f"Data for CWE-{cwe_id} already exists. Skipping.")
+                if logger:
+                    logger.info(f"Data for CWE-{cwe_id} already exists. Skipping.")
+                continue
+            
+            print(f"Crawling details for CWE-{cwe_id}...")
+            if logger:
+                logger.info(f"Crawling details for CWE-{cwe_id}...")
+            try:
+                crawling_command = ["python3", "crawling_cwe.py", "--cwe-id", cwe_id]
+                process_result = subprocess.run(
+                    crawling_command, check=True, capture_output=True, text=True
+                )
+                print(f"Successfully crawled data for CWE-{cwe_id}.")
+                if logger:
+                    logger.info(f"Successfully crawled data for CWE-{cwe_id}.")
+            except subprocess.CalledProcessError as e:
+                print(f"Error running crawling_cwe.py for CWE-ID {cwe_id}:\n{e.stderr}")
+                if logger:
+                    logger.error(f"Error running crawling_cwe.py for CWE-ID {cwe_id}:\n{e.stderr}")
 
-                # Step 4: Find and validate relationships with related CWEs
-                print(f"\n[Step 4] Finding and validating relationships for CWE-{source_cwe_id}...")
-                related_csv_path = os.path.join(source_cwe_dir, f"cwe{source_cwe_id}_RelatedWeakness.csv")
-                if not os.path.exists(related_csv_path):
-                    print(f"[Info] No related weaknesses found for CWE-{source_cwe_id}.")
-                    continue
+    # This list will store the final details for the report
+    final_vulnerability_details = []
 
-                df_related = pd.read_csv(related_csv_path)
-                for _, row in df_related.iterrows():
-                    target_cwe_id = str(int(row['related_cwe_id']))
-                    relationship_type = row['nature']
+    # --- [Step 4] Validate CWEs and Collect Confirmed Ones ---
+    if step4_validation_tasks:
+        print(f"\n--- [Step 4] Validating CWEs for {len(step4_validation_tasks)} vulnerabilities... ---")
+        if logger:
+            logger.info(f"\n--- [Step 4] Validating CWEs for {len(step4_validation_tasks)} vulnerabilities... ---")
+        validation_parser = PydanticOutputParser(pydantic_object=CweValidationResult)
+        validation_prompt_template = USER_PROMPTS.get("fourth_request_cwe_validation")
 
-                    # Get target CWE description
-                    target_cwe_dir = f"data/CWE-{target_cwe_id}"
-                    if not os.path.isdir(target_cwe_dir):
-                        print(f"[Info] Local data for target CWE-{target_cwe_id} not found. Running crawler...")
-                        subprocess.run(["python3", "crawling_cwe.py", "--cwe-id", target_cwe_id], check=True)
-                    
-                    target_csv_path = os.path.join(target_cwe_dir, f"cwe{target_cwe_id}_cwe_main.csv")
-                    if not os.path.exists(target_csv_path):
-                        print(f"[Error] Main CSV for target CWE-{target_cwe_id} not found.")
-                        continue
-                        
-                    df_target = pd.read_csv(target_csv_path)
-                    target_cwe_description = df_target['Description'].iloc[0] if not df_target.empty else "Description not found."
-                    
-                    # Call LLM to validate the relationship
-                    fourth_user_prompt = fourth_user_prompt_template.format(
-                        original_vulnerability_description=original_vulnerability_description,
-                        source_cwe_description=source_cwe_description,
-                        target_cwe_description=target_cwe_description,
-                        relationship_type=relationship_type,
-                        format_instructions=fourth_parser.get_format_instructions()
+        for task in step4_validation_tasks:
+            vuln = task["vulnerability"]
+            cwe_ids_to_validate = task["cwe_ids_to_validate"]
+            confirmed_cwes_for_vuln = []
+            
+            print(f"\n--- Validating for Vulnerability #{task['vulnerability_id']}: {vuln.vulnerability} ---")
+            if logger:
+                logger.info(f"\n--- Validating for Vulnerability #{task['vulnerability_id']}: {vuln.vulnerability} ---")
+
+            for cwe_id in sorted(list(cwe_ids_to_validate), key=int):
+                try:
+                    cwe_main_file = f"data/CWE-{cwe_id}/cwe{cwe_id}_cwe_main.csv"
+                    if not os.path.exists(cwe_main_file): continue
+                    df = pd.read_csv(cwe_main_file)
+                    cwe_description = df['Description'].iloc[0] if not df.empty else "Not found."
+                    if cwe_description == "Not found.": continue
+
+                    validation_prompt = validation_prompt_template.format(
+                        original_vulnerability_description=vuln.model_dump_json(indent=2),
+                        cwe_database_description=f"CWE-{cwe_id}: {cwe_description}",
+                        format_instructions=validation_parser.get_format_instructions()
                     )
+                    if logger:
+                        logger.info(f"\n==================== [Step 4 - CWE-{cwe_id}] LLM REQUEST ====================")
+                        logger.info(f"USER PROMPT (TEMPLATE): {validation_prompt_template}")
+                        logger.info("===================================================================")
 
-                    fourth_chain = PromptTemplate(
-                        template="""
-{system_prompt}
-
-{user_prompt}
-""",
-                        input_variables=["system_prompt", "user_prompt"],
-                    ) | llm | fourth_parser
-                    step4_single_result = fourth_chain.invoke({"system_prompt": system_prompt, "user_prompt": fourth_user_prompt})
+                    validation_chain = PromptTemplate.from_template("{prompt}") | llm | validation_parser
+                    validation_result = validation_chain.invoke({"prompt": validation_prompt})
                     
-                    print(f"[Result] Relationship Validation: CWE-{source_cwe_id} -> CWE-{target_cwe_id} ({relationship_type}) -> {step4_single_result.is_relationship_valid}")
+                    if logger:
+                        logger.info(f"\n==================== [Step 4 - CWE-{cwe_id}] LLM RESPONSE ===================")
+                        logger.info(validation_result.model_dump_json(indent=2))
+                        logger.info("===================================================================")
+
+                    if validation_result.is_similar and validation_result.confidence >= 0.8:
+                        print(f"  - MATCH FOUND: CWE-{cwe_id} (Confidence: {validation_result.confidence:.2f})")
+                        if logger:
+                            logger.info(f"  - MATCH FOUND: CWE-{cwe_id} (Confidence: {validation_result.confidence:.2f})")
+                        confirmed_cwes_for_vuln.append({
+                            "cwe_id": f"CWE-{cwe_id}",
+                            "confidence": validation_result.confidence,
+                            "reasoning": validation_result.reasoning
+                        })
+                except Exception as e:
+                    print(f"  - Error validating CWE-{cwe_id}: {e}")
+                    if logger:
+                        logger.error(f"  - Error validating CWE-{cwe_id}: {e}")
+
+            if confirmed_cwes_for_vuln:
+                task["confirmed_cwes"] = confirmed_cwes_for_vuln
+            else:
+                print("  - No strongly related CWEs found for this vulnerability after validation.")
+                if logger:
+                    logger.warning("  - No strongly related CWEs found for this vulnerability after validation.")
+
+
+    # --- [Step 5] Generate Final Report ---
+    if step4_validation_tasks:
+        print(f"\n--- [Step 5] Generating Final Security Report... ---")
+        if logger:
+            logger.info(f"\n--- [Step 5] Generating Final Security Report... ---")
+        # This parser is for the specific output of the fifth prompt
+        final_analysis_parser = PydanticOutputParser(pydantic_object=FinalAnalysis)
+        final_report_prompt_template = USER_PROMPTS.get("fifth_request_attack_scenario")
+
+        report_vulnerability_details = []
+
+        for task in step4_validation_tasks:
+            if "confirmed_cwes" in task:
+                vuln = task["vulnerability"]
+                confirmed_cwes = task["confirmed_cwes"]
+                
+                # Consolidate relationship data for all confirmed CWEs
+                relationship_data_parts = []
+                for cwe_info in confirmed_cwes:
+                    cwe_id = cwe_info["cwe_id"].replace("CWE-", "")
+                    relation_file = f"data/CWE-{cwe_id}/cwe{cwe_id}_RelatedWeakness.csv"
+                    if os.path.exists(relation_file):
+                        df_relations = pd.read_csv(relation_file)
+                        relationship_data_parts.append(f"--- Relations for CWE-{cwe_id} ---\n{df_relations.to_csv(index=False)}")
+
+                final_prompt = final_report_prompt_template.format(
+                    vulnerability_analysis=vuln.model_dump_json(indent=2),
+                    confirmed_cwe_list=json.dumps(confirmed_cwes, indent=2),
+                    cwe_relationship_data="\n".join(relationship_data_parts),
+                    format_instructions=final_analysis_parser.get_format_instructions()
+                )
+
+                if logger:
+                    logger.info(f"\n==================== [Step 5 - Vuln #{task['vulnerability_id']}] LLM REQUEST ====================")
+                    logger.info(f"USER PROMPT (TEMPLATE): {final_report_prompt_template}")
+                    logger.info("==========================================================================")
+
+                try:
+                    # The chain should use the parser for the analysis part, not the whole report
+                    final_chain = PromptTemplate.from_template("{prompt}") | llm | final_analysis_parser
+                    final_analysis_result = final_chain.invoke({"prompt": final_prompt})
+
+                    if logger:
+                        logger.info(f"\n==================== [Step 5 - Vuln #{task['vulnerability_id']}] LLM RESPONSE ===================")
+                        logger.info(final_analysis_result.model_dump_json(indent=2))
+                        logger.info("==========================================================================")
                     
-                    if step4_single_result.is_relationship_valid:
-                        current_vuln_step4_results.append(step4_single_result.model_dump())
-                        # Add the valid related CWE to the queue for further traversal with the full path
-                        new_path = current_path + [target_cwe_id]
-                        cwe_to_process.append((target_cwe_id, current_depth + 1, new_path))
-                        # Also add the newly formed chain to our list
-                        chain_str = " -> ".join([f"CWE-{cwe}" for cwe in new_path])
-                        validated_chains.append(chain_str)
+                    # We need to construct the VulnerabilityDetail object for the final report
+                    vulnerability_detail = VulnerabilityDetail(
+                        vulnerability_id=task["vulnerability_id"],
+                        description=vuln.vulnerability,
+                        suggested_fix=vuln.fix,
+                        confirmed_cwes=confirmed_cwes,
+                        analysis=final_analysis_result
+                    )
+                    report_vulnerability_details.append(vulnerability_detail)
 
-            except Exception as e:
-                print(f"[Error] Failed during pipeline processing for CWE-{source_cwe_id}: {e}")
+                except Exception as e:
+                    print(f"  - Error generating report for vulnerability #{task['vulnerability_id']}: {e}")
+                    if logger:
+                        logger.error(f"  - Error generating report for vulnerability #{task['vulnerability_id']}: {e}")
 
-        # Append results for the current vulnerability to the main lists
-        step3_results.extend(current_vuln_step3_results)
-        step4_results.extend(current_vuln_step4_results)
-        
+        if report_vulnerability_details:
+            final_report = FinalReport(
+                analysis_summary={
+                    "file_path": ", ".join(glob.glob(os.path.expanduser(code_file_pattern))),
+                    "total_vulnerabilities_found": len(report_vulnerability_details)
+                },
+                vulnerability_details=report_vulnerability_details
+            )
+            print("\n--- FINAL SECURITY REPORT ---")
+            print(final_report.model_dump_json(indent=2))
+            if logger:
+                logger.info("\n--- FINAL SECURITY REPORT ---")
+                logger.info(final_report.model_dump_json(indent=2))
+            
     # --- Final Logging ---
     request_data = {
-        "task": "full_analysis_pipeline",
+        "task": "vulnerability_analysis_pipeline",
         "code_file": code_file_pattern,
-        "max_depth": depth
     }
-    
-    # Create a summary of validated relations for the new field
-    # We now use the full chains instead of individual relationships
-    cwe_relation_summary = validated_chains
-
-    # --- [Step 5] Synthesizing an attack scenario ---
-    print("\n--- [Step 5] Synthesizing an attack scenario... ---")
-    step5_results = None
-    try:
-        step5_parser = PydanticOutputParser(pydantic_object=AttackScenarios)
-        step5_prompt_template = PromptTemplate(
-            template=USER_PROMPTS["fifth_request_attack_scenario"],
-            input_variables=["user_code", "step1_analysis_result", "cwe_relation"],
-            partial_variables={"format_instructions": step5_parser.get_format_instructions()},
-        )
-        step5_chain = step5_prompt_template | llm | step5_parser
-        step5_response = step5_chain.invoke({
-            "user_code": user_code,
-            "step1_analysis_result": json.dumps(step1_result.model_dump(), indent=2),
-            "cwe_relation": json.dumps(cwe_relation_summary, indent=2)
-        })
-        step5_results = step5_response.model_dump()
-        print("\n--- [Step 5] Attack Scenario Analysis Result ---")
-        print(json.dumps(step5_results, indent=2))
-    except Exception as e:
-        print(f"[Error] Failed during Step 5 (Attack Scenario Analysis): {e}")
-
-
-    combined_response_data = {
-        "step1_vulnerability_analysis": {
-            "request_prompt": first_user_prompt,
-            "response_data": step1_result.model_dump() if step1_result else None
-        },
-        "step2_keyword_extraction": {
-            "request_prompt": second_user_prompt,
-            "response_data": step2_result.model_dump() if step2_result else None
-        },
-        "step3_cwe_initial_validation": {
-            "results": step3_results
-        },
-        "step4_relationship_analysis": {
-            "results": step4_results
-        },
-        "cwe_relation": cwe_relation_summary,
-        "step5_attack_scenario_analysis": {
-            "results": step5_results
-        }
-    }
-    log_llm_interaction(model_name, request_data, combined_response_data)
+    log_llm_interaction(model_name, request_data, final_report.model_dump() if 'final_report' in locals() else {"error": "Report not generated"})
 
 
 def load_vul4j_source_code(vul4j_id: str) -> str:
@@ -1062,22 +1023,24 @@ def main():
     parser = argparse.ArgumentParser(description="A script for testing LangChain models.")
     parser.add_argument("--model", type=str, required=True, 
                         help="Specify the model to use (e.g., 'ollama:qwen:32b-chat', 'gemini-pro', 'gpt-4o').")
-    parser.add_argument("--task", type=str, default=None, choices=["chat", "security_analysis", "batch_chat", "code_analysis", "code_chat", "keyword_analysis"],
-                        help="Select the task to perform. If not provided, defaults to the full analysis pipeline (keyword_analysis).")
+    parser.add_argument("--task", type=str, default=None, choices=["chat", "security_analysis", "batch_chat", "code_analysis", "code_chat", "vulnerability_analysis"],
+                        help="Select the task to perform. If not provided, defaults to the full analysis pipeline (vulnerability_analysis).")
     parser.add_argument("--system-id", type=str,
                         help="Specify the ID of the system prompt to use for the 'chat' task.")
     parser.add_argument("--user-id", type=str,
                         help="Specify the ID of the user prompt to use for the 'chat' task.")
     parser.add_argument("--code-file", type=str,
-                        help="Specify the path to the code file for the 'code_chat' task.")
+                        help="Specify the path to the code file for the 'code_chat' or 'vulnerability_analysis' task.")
+    parser.add_argument("--keyword-search-results", type=int, default=5,
+                        help="The number of CWE search results to fetch for each keyword in Step 2.")
+    parser.add_argument("--keyword-depth", type=int, default=3,
+                        help="The number of top keywords to use for CWE search for each vulnerability.")
     parser.add_argument("--vul4j_id", type=str,
                         help="Specify the Vul4J ID to use for 'security_analysis' or 'code_analysis' tasks.")
     parser.add_argument("--cwe-id", type=str,
                         help="Specify the CWE ID to reference for the 'security_analysis' task (e.g., '20').")
     parser.add_argument("--generate-patch", action="store_true",
                         help="If specified with 'security_analysis', generate a patch if a vulnerability is found.")
-    parser.add_argument("--depth", type=int, default=2,
-                        help="Set the maximum traversal depth for KG relationship analysis in Step 4.")
     parser.add_argument("--debug", action="store_true", 
                         help="Enable debug mode for verbose logging of requests and responses.")
     args = parser.parse_args()
@@ -1085,9 +1048,9 @@ def main():
     # Verify required arguments for each task
     if args.task == 'chat' and (not args.system_id or not args.user_id):
         parser.error("--system-id and --user-id are required for the 'chat' task.")
-    # If no task is specified, it defaults to keyword_analysis, which requires a code file.
-    if (args.task is None or args.task in ['code_chat', 'keyword_analysis']) and not args.code_file:
-        parser.error("--code-file is required for the default analysis pipeline and for 'code_chat' or 'keyword_analysis' tasks.")
+    # If no task is specified, it defaults to vulnerability_analysis, which requires a code file.
+    if (args.task is None or args.task in ['code_chat', 'vulnerability_analysis']) and not args.code_file:
+        parser.error("--code-file is required for the default analysis pipeline and for 'code_chat' or 'vulnerability_analysis' tasks.")
     if args.task == 'security_analysis' and (not args.vul4j_id or not args.cwe_id):
         parser.error("--vul4j_id and --cwe_id are required for the 'security_analysis' task.")
     if args.task == 'code_analysis' and not args.vul4j_id:
@@ -1110,7 +1073,7 @@ def main():
         # Determine the task to run
         task_to_run = args.task
         if task_to_run is None:
-            task_to_run = "keyword_analysis" # Default task
+            task_to_run = "vulnerability_analysis" # Default task
 
         if task_to_run == "chat":
             run_chat_task(llm, args.model, args.system_id, args.user_id, logger=logger)
@@ -1119,8 +1082,8 @@ def main():
             system_id = args.system_id if args.system_id else "role_security_analysis"
             user_id = args.user_id if args.user_id else "first_request_security_analysis"
             run_code_chat_task(llm, args.model, args.code_file, system_id, user_id, logger=logger)
-        elif task_to_run == "keyword_analysis":
-            run_full_analysis_pipeline(llm, args.model, args.code_file, args.depth, logger=logger)
+        elif task_to_run == "vulnerability_analysis":
+            run_vulnerability_analysis_pipeline(llm, args.model, args.code_file, args.keyword_search_results, args.keyword_depth, logger=logger)
         elif task_to_run == "security_analysis":
             user_code = load_vul4j_source_code(args.vul4j_id)
             

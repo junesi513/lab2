@@ -1,0 +1,114 @@
+cwe_id,example_id,entry_order,IntroText,Nature,Language,ExampleCode,BodyText
+835,GEN-1,1,In the following code the method processMessagesFromServer attempts to establish a connection to a server and read and process messages from the server. The method uses a do/while loop to continue trying to establish the connection to the server when an attempt fails.,NULL,NULL,NULL,NULL
+835,GEN-1,2,NULL,Bad,C,"```
+	int processMessagesFromServer(char *hostaddr, int port) {
+			...
+			int servsock;
+			int connected;
+			struct sockaddr_in servaddr;
+```
+// create socket to connect to server* 
+			servsock = socket( AF_INET, SOCK_STREAM, 0);
+			memset( &servaddr, 0, sizeof(servaddr));
+			servaddr.sin_family = AF_INET;
+			servaddr.sin_port = htons(port);
+			servaddr.sin_addr.s_addr = inet_addr(hostaddr);
+			
+			do {
+			```
+```
+// establish connection to server* 
+					connected = connect(servsock, (struct sockaddr *)&servaddr, sizeof(servaddr));
+					
+					
+					 *// if connected then read and process messages from server* 
+					if (connected > -1) {
+					```
+```
+// read and process messages* 
+							...}
+					
+			
+			 *// keep trying to establish connection to the server* 
+			} while (connected < 0);
+			
+			
+			 *// close socket and return success or failure* 
+			...}",NULL
+835,GEN-1,3,NULL,NULL,NULL,NULL,"However, this will create an infinite loop if the server does not respond. This infinite loop will consume system resources and can be used to create a denial of service attack. To resolve this a counter should be used to limit the number of attempts to establish a connection to the server, as in the following code."
+835,GEN-1,4,NULL,Good,C,"```
+	int processMessagesFromServer(char *hostaddr, int port) {
+			...
+```
+// initialize number of attempts counter* 
+			int count = 0;
+			do {
+			```
+```
+// establish connection to server* 
+					connected = connect(servsock, (struct sockaddr *)&servaddr, sizeof(servaddr));
+					
+					
+					 *// increment counter* 
+					count++;
+					
+					
+					 *// if connected then read and process messages from server* 
+					if (connected > -1) {
+					```
+```
+// read and process messages* 
+							...}
+					
+			
+			 *// keep trying to establish connection to the server* 
+			
+			
+			 *// up to a maximum number of attempts* 
+			} while (connected < 0 && count < MAX_ATTEMPTS);
+			
+			
+			 *// close socket and return success or failure* 
+			...}",NULL
+835,DX-205,1,"For this example, the method isReorderNeeded is part of a bookstore application that determines if a particular book needs to be reordered based on the current inventory count and the rate at which the book is being sold.",NULL,NULL,NULL,NULL
+835,DX-205,2,NULL,Bad,Java,"```
+	public boolean isReorderNeeded(String bookISBN, int rateSold) {
+			boolean isReorder = false;
+			int minimumCount = 10;
+			int days = 0;
+```
+// get inventory count for book* 
+			int inventoryCount = inventory.getIventoryCount(bookISBN);
+			
+			
+			 *// find number of days until inventory count reaches minimum* 
+			while (inventoryCount > minimumCount) {
+			```
+					inventoryCount = inventoryCount - rateSold;
+					days++;
+			}
+```
+// if number of days within reorder timeframe* 
+			
+			
+			 *// set reorder return boolean to true* 
+			if (days > 0 && days < 5) {
+			```
+				isReorder = true;
+			}
+			return isReorder;
+	}
+```",NULL
+835,DX-205,3,NULL,NULL,NULL,NULL,"However, the while loop will become an infinite loop if the rateSold input parameter has a value of zero since the inventoryCount will never fall below the minimumCount. In this case the input parameter should be validated to ensure that a value of zero does not cause an infinite loop, as in the following code."
+835,DX-205,4,NULL,Good,Java,"```
+	public boolean isReorderNeeded(String bookISBN, int rateSold) {
+			...
+```
+// validate rateSold variable* 
+			if (rateSold < 1) {
+			```
+				return isReorder;
+			}
+			...
+	}
+```",NULL

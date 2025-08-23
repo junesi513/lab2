@@ -1,0 +1,54 @@
+cwe_id,example_id,entry_order,IntroText,Nature,Language,ExampleCode,BodyText
+405,DX-113,1,This code listens on a port for DNS requests and sends the result to the requesting address.,NULL,NULL,NULL,NULL
+405,DX-113,2,NULL,Bad,Python,"```
+	sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	sock.bind( (UDP_IP,UDP_PORT) )
+	while true:
+			data = sock.recvfrom(1024)
+			if not data:
+				break
+			(requestIP, nameToResolve) = parseUDPpacket(data)
+			record = resolveName(nameToResolve)
+			sendResponse(requestIP,record)
+```",NULL
+405,DX-113,3,NULL,NULL,NULL,NULL,"This code sends a DNS record to a requesting IP address. UDP allows the source IP address to be easily changed ('spoofed'), thus allowing an attacker to redirect responses to a target, which may be then be overwhelmed by the network traffic."
+405,DX-157,1,This function prints the contents of a specified file requested by a user.,NULL,NULL,NULL,NULL
+405,DX-157,2,NULL,Bad,PHP,"```
+	function printFile($username,$filename){
+```
+//read file into string* 
+			$file = file_get_contents($filename);
+			if ($file && isOwnerOf($username,$filename)){
+			```
+				echo $file;
+				return true;
+			}
+			else{
+				echo 'You are not authorized to view this file';
+			}
+			return false;
+	}
+```",NULL
+405,DX-157,3,NULL,NULL,NULL,NULL,"This code first reads a specified file into memory, then prints the file if the user is authorized to see its contents. The read of the file into memory may be resource intensive and is unnecessary if the user is not allowed to see the file anyway."
+405,DX-53,1,"The DTD and the very brief XML below illustrate what is meant by an XML bomb. The ZERO entity contains one character, the letter A. The choice of entity name ZERO is being used to indicate length equivalent to that exponent on two, that is, the length of ZERO is 2^0. Similarly, ONE refers to ZERO twice, therefore the XML parser will expand ONE to a length of 2, or 2^1. Ultimately, we reach entity THIRTYTWO, which will expand to 2^32 characters in length, or 4 GB, probably consuming far more data than expected.",NULL,NULL,NULL,NULL
+405,DX-53,2,NULL,Attack,XML,"```
+	<?xml version=""1.0""?>
+	<!DOCTYPE MaliciousDTD [
+	<!ENTITY ZERO ""A"">
+	<!ENTITY ONE ""&ZERO;&ZERO;"">
+	<!ENTITY TWO ""&ONE;&ONE;"">
+	...
+	<!ENTITY THIRTYTWO ""&THIRTYONE;&THIRTYONE;"">
+	]>
+	<data>&THIRTYTWO;</data>
+```",NULL
+405,DX-158,1,"This example attempts to check if an input string is a ""sentence"" [REF-1164].",NULL,NULL,NULL,NULL
+405,DX-158,2,NULL,Bad,JavaScript,"var test_string = ""Bad characters: $@#"";
+ var bad_pattern = /^(\w+\s?)*$/i;
+ var result = test_string.search(bad_pattern);",NULL
+405,DX-158,3,NULL,NULL,NULL,NULL,"The regular expression has a vulnerable backtracking clause inside (\w+\s?)*$ which can be triggered to cause a Denial of Service by processing particular phrases. To fix the backtracking problem, backtracking is removed with the ?= portion of the expression which changes it to a lookahead and the \2 which prevents the backtracking. The modified example is:"
+405,DX-158,4,NULL,Good,JavaScript,"var test_string = ""Bad characters: $@#"";
+ var good_pattern = /^((?=(\w+))\2\s?)*$/i;
+ var result = test_string.search(good_pattern);",NULL
+405,DX-158,5,NULL,NULL,NULL,NULL,Note that [REF-1164] has a more thorough (and lengthy) explanation of everything going on within the RegEx.
+405,GEN-5,1,"An adversary can cause significant resource consumption on a server by filtering the cryptographic algorithms offered by the client to the ones that are the most resource-intensive on the server side. After discovering which cryptographic algorithms are supported by the server, a malicious client can send the initial cryptographic handshake messages that contains only the resource-intensive algorithms. For some cryptographic protocols, these messages can be completely prefabricated, as the resource-intensive part of the handshake happens on the server-side first (such as TLS), rather than on the client side. In the case of cryptographic protocols where the resource-intensive part should happen on the client-side first (such as SSH), a malicious client can send a forged/precalculated computation result, which seems correct to the server, so the resource-intensive part of the handshake is going to happen on the server side. A malicious client is required to send only the initial messages of a cryptographic handshake to initiate the resource-consuming part of the cryptographic handshake. These messages are usually small, and generating them requires minimal computational effort, enabling a denial-of-service attack. An additional risk is the fact that higher key size increases the effectiveness of the attack. Cryptographic protocols where the clients have influence over the size of the used key (such as TLS 1.3 or SSH) are most at risk, as the client can enforce the highest key size supported by the server.",NULL,NULL,NULL,NULL

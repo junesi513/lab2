@@ -1,0 +1,12 @@
+cwe_id,example_id,entry_order,IntroText,Nature,Language,ExampleCode,BodyText
+688,DX-64,1,"In the following Java snippet, the accessGranted() method is accidentally called with the static ADMIN_ROLES array rather than the user roles.",NULL,NULL,NULL,NULL
+688,DX-64,2,NULL,Bad,Java,"```
+	private static final String[] ADMIN_ROLES = ...;
+	public boolean void accessGranted(String resource, String user) {
+		String[] userRoles = getUserRoles(user);
+		return accessGranted(resource, ADMIN_ROLES);
+	}
+	private boolean void accessGranted(String resource, String[] userRoles) {
+```
+// grant or deny access based on user roles* 
+			...}",NULL

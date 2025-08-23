@@ -1,0 +1,8 @@
+cwe_id,example_id,entry_order,IntroText,Nature,Language,ExampleCode,BodyText
+582,GEN-1,1,"The following Java Applet code mistakenly declares an array public, final and static.",NULL,NULL,NULL,NULL
+582,GEN-1,2,NULL,Bad,Java,"```
+	public final class urlTool extends Applet {
+		public final static URL[] urls;
+		...
+	}
+```",NULL

@@ -1,0 +1,24 @@
+cwe_id,example_id,entry_order,IntroText,Nature,Language,ExampleCode,BodyText
+690,GEN-1,1,The code below makes a call to the getUserName() function but doesn't check the return value before dereferencing (which may cause a NullPointerException).,NULL,NULL,NULL,NULL
+690,GEN-1,2,NULL,Bad,Java,"```
+	String username = getUserName();
+	if (username.equals(ADMIN_USER)) {
+		...
+	}
+```",NULL
+690,DX-1,1,"This example takes an IP address from a user, verifies that it is well formed and then looks up the hostname and copies it into a buffer.",NULL,NULL,NULL,NULL
+690,DX-1,2,NULL,Bad,C,"```
+	void host_lookup(char *user_supplied_addr){
+			struct hostent *hp;
+			in_addr_t *addr;
+			char hostname[64];
+			in_addr_t inet_addr(const char *cp);
+```
+/*routine that ensures user_supplied_addr is in the right format for conversion */* 
+			
+			validate_addr_form(user_supplied_addr);
+			addr = inet_addr(user_supplied_addr);
+			hp = gethostbyaddr( addr, sizeof(struct in_addr), AF_INET);
+			strcpy(hostname, hp->h_name);}",NULL
+690,DX-1,3,NULL,NULL,NULL,NULL,"If an attacker provides an address that appears to be well-formed, but the address does not resolve to a hostname, then the call to gethostbyaddr() will return NULL. Since the code does not check the return value from gethostbyaddr (CWE-252), a NULL pointer dereference (CWE-476) would then occur in the call to strcpy()."
+690,DX-1,4,NULL,NULL,NULL,NULL,Note that this code is also vulnerable to a buffer overflow (CWE-119).

@@ -1,0 +1,127 @@
+cwe_id,example_id,entry_order,IntroText,Nature,Language,ExampleCode,BodyText
+78,DX-151,1,This example code intends to take the name of a user and list the contents of that user's home directory. It is subject to the first variant of OS command injection.,NULL,NULL,NULL,NULL
+78,DX-151,2,NULL,Bad,PHP,"```
+	$userName = $_POST[""user""];
+	$command = 'ls -l /home/' . $userName;
+	system($command);
+```",NULL
+78,DX-151,3,NULL,NULL,NULL,NULL,The $userName variable is not checked for malicious input. An attacker could set the $userName variable to an arbitrary OS command such as:
+78,DX-151,4,NULL,Attack,NULL,"```
+	;rm -rf /
+```",NULL
+78,DX-151,5,NULL,NULL,NULL,NULL,Which would result in $command being:
+78,DX-151,6,NULL,Result,NULL,"```
+	ls -l /home/;rm -rf /
+```",NULL
+78,DX-151,7,NULL,NULL,NULL,NULL,"Since the semi-colon is a command separator in Unix, the OS would first execute the ls command, then the rm command, deleting the entire file system."
+78,DX-151,8,NULL,NULL,NULL,NULL,Also note that this example code is vulnerable to Path Traversal (CWE-22) and Untrusted Search Path (CWE-426) attacks.
+78,DX-30,1,The following simple program accepts a filename as a command line argument and displays the contents of the file back to the user. The program is installed setuid root because it is intended for use as a learning tool to allow system administrators in-training to inspect privileged system files without giving them the ability to modify them or damage the system.,NULL,NULL,NULL,NULL
+78,DX-30,2,NULL,Bad,C,"```
+	int main(int argc, char** argv) {
+		char cmd[CMD_MAX] = ""/usr/bin/cat "";
+		strcat(cmd, argv[1]);
+		system(cmd);
+	}
+```",NULL
+78,DX-30,3,NULL,NULL,NULL,NULL,"Because the program runs with root privileges, the call to system() also executes with root privileges. If a user specifies a standard filename, the call works as expected. However, if an attacker passes a string of the form "";rm -rf /"", then the call to system() fails to execute cat due to a lack of arguments and then plows on to recursively delete the contents of the root partition."
+78,DX-30,4,NULL,NULL,NULL,NULL,"Note that if argv[1] is a very long argument, then this issue might also be subject to a buffer overflow (CWE-120)."
+78,GEN-3,1,This example is a web application that intends to perform a DNS lookup of a user-supplied domain name. It is subject to the first variant of OS command injection.,NULL,NULL,NULL,NULL
+78,GEN-3,2,NULL,Bad,Perl,"```
+	use CGI qw(:standard);
+	$name = param('name');
+	$nslookup = ""/path/to/nslookup"";
+	print header;
+	if (open($fh, ""$nslookup $name|"")) {
+		while (<$fh>) {
+			print escapeHTML($_);
+			print ""<br>\n"";
+		}
+		close($fh);
+	}
+```",NULL
+78,GEN-3,3,NULL,NULL,NULL,NULL,Suppose an attacker provides a domain name like this:
+78,GEN-3,4,NULL,Attack,NULL,"```
+	cwe.mitre.org%20%3B%20/bin/ls%20-l
+```",NULL
+78,GEN-3,5,NULL,NULL,NULL,NULL,"The ""%3B"" sequence decodes to the "";"" character, and the %20 decodes to a space. The open() statement would then process a string like this:"
+78,GEN-3,6,NULL,Result,NULL,"```
+	/path/to/nslookup cwe.mitre.org ; /bin/ls -l
+```",NULL
+78,GEN-3,7,NULL,NULL,NULL,NULL,"As a result, the attacker executes the ""/bin/ls -l"" command and gets a list of all the files in the program's working directory. The input could be replaced with much more dangerous commands, such as installing a malicious program on the server."
+78,GEN-4,1,The example below reads the name of a shell script to execute from the system properties. It is subject to the second variant of OS command injection.,NULL,NULL,NULL,NULL
+78,GEN-4,2,NULL,Bad,Java,"```
+	String script = System.getProperty(""SCRIPTNAME"");
+	if (script != null)
+		System.exec(script);
+```",NULL
+78,GEN-4,3,NULL,NULL,NULL,NULL,"If an attacker has control over this property, then they could modify the property to point to a dangerous program."
+78,GEN-5,1,"In the example below, a method is used to transform geographic coordinates from latitude and longitude format to UTM format. The method gets the input coordinates from a user through a HTTP request and executes a program local to the application server that performs the transformation. The method passes the latitude and longitude coordinates as a command-line option to the external program and will perform some processing to retrieve the results of the transformation and return the resulting UTM coordinates.",NULL,NULL,NULL,NULL
+78,GEN-5,2,NULL,Bad,Java,"```
+	public String coordinateTransformLatLonToUTM(String coordinates)
+	{
+			String utmCoords = null;
+			try {
+					String latlonCoords = coordinates;
+					Runtime rt = Runtime.getRuntime();
+					Process exec = rt.exec(""cmd.exe /C latlon2utm.exe -"" + latlonCoords);
+```
+// process results of coordinate transform* 
+					
+					
+					 *// ...* 
+					}
+			catch(Exception e) {...}
+			return utmCoords;}",NULL
+78,GEN-5,3,NULL,NULL,NULL,NULL,"However, the method does not verify that the contents of the coordinates input parameter includes only correctly-formatted latitude and longitude coordinates. If the input coordinates were not validated prior to the call to this method, a malicious user could execute another program local to the application server by appending '&' followed by the command for another program to the end of the coordinate string. The '&' instructs the Windows operating system to execute another program."
+78,DX-28,1,"The following code is from an administrative web application designed to allow users to kick off a backup of an Oracle database using a batch-file wrapper around the rman utility and then run a cleanup.bat script to delete some temporary files. The script rmanDB.bat accepts a single command line parameter, which specifies what type of backup to perform. Because access to the database is restricted, the application runs the backup as a privileged user.",NULL,NULL,NULL,NULL
+78,DX-28,2,NULL,Bad,Java,"```
+	...
+	String btype = request.getParameter(""backuptype"");
+	String cmd = new String(""cmd.exe /K \""
+		c:\\util\\rmanDB.bat ""
+		+btype+
+		""&&c:\\utl\\cleanup.bat\"""")
+	System.Runtime.getRuntime().exec(cmd);
+	...
+```",NULL
+78,DX-28,3,NULL,NULL,NULL,NULL,"The problem here is that the program does not do any validation on the backuptype parameter read from the user. Typically the Runtime.exec() function will not execute multiple commands, but in this case the program first runs the cmd.exe shell in order to run multiple commands with a single call to Runtime.exec(). Once the shell is invoked, it will happily execute multiple commands separated by two ampersands. If an attacker passes a string of the form ""& del c:\\dbms\\*.*"", then the application will execute this command along with the others specified by the program. Because of the nature of the application, it runs with the privileges necessary to interact with the database, which means whatever command the attacker injects will run with those privileges as well."
+78,GEN-7,1,The following code is a wrapper around the UNIX command cat which prints the contents of a file to standard out. It is also injectable:,NULL,NULL,NULL,NULL
+78,GEN-7,2,NULL,Bad,C,"```
+	#include <stdio.h>
+	#include <unistd.h>
+	int main(int argc, char **argv) {
+			char cat[] = ""cat "";
+			char *command;
+			size_t commandLength;
+			commandLength = strlen(cat) + strlen(argv[1]) + 1;
+			command = (char *) malloc(commandLength);
+			strncpy(command, cat, commandLength);
+			strncat(command, argv[1], (commandLength - strlen(cat)) );
+			system(command);
+			return (0);
+	}
+```",NULL
+78,GEN-7,3,NULL,NULL,NULL,NULL,"Used normally, the output is simply the contents of the file requested, such as Story.txt:"
+78,GEN-7,4,NULL,Informative,NULL,"```
+	./catWrapper Story.txt
+```",NULL
+78,GEN-7,5,NULL,Result,NULL,"```
+	 When last we left our heroes... 
+```",NULL
+78,GEN-7,6,NULL,NULL,NULL,NULL,"However, if the provided argument includes a semicolon and another command, such as:"
+78,GEN-7,7,NULL,Attack,NULL,"```
+	Story.txt; ls
+```",NULL
+78,GEN-7,8,NULL,NULL,NULL,NULL,"Then the ""ls"" command is executed by catWrapper with no complaint:"
+78,GEN-7,9,NULL,Result,NULL,"```
+	./catWrapper Story.txt; ls
+```",NULL
+78,GEN-7,10,NULL,NULL,NULL,NULL,"Two commands would then be executed: catWrapper, then ls. The result might look like:"
+78,GEN-7,11,NULL,Result,NULL,"```
+	When last we left our heroes...
+	 Story.txt
+	 SensitiveFile.txt
+	 PrivateData.db
+	 a.out*
+```",NULL
+78,GEN-7,12,NULL,NULL,NULL,NULL,"If catWrapper had been set to have a higher privilege level than the standard user, arbitrary commands could be executed with that higher privilege."

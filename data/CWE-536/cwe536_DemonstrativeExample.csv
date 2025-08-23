@@ -1,0 +1,13 @@
+cwe_id,example_id,entry_order,IntroText,Nature,Language,ExampleCode,BodyText
+536,DX-190,1,"The following servlet code does not catch runtime exceptions, meaning that if such an exception were to occur, the container may display potentially dangerous information (such as a full stack trace).",NULL,NULL,NULL,NULL
+536,DX-190,2,NULL,Bad,Java,"```
+	public void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+			String username = request.getParameter(""username"");
+```
+// May cause unchecked NullPointerException.* 
+			if (username.length() < 10) {
+			```
+				...
+			}
+	}
+```",NULL

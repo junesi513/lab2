@@ -1,0 +1,2 @@
+idx,ID,Name,Description,ExtendedDescription
+0,135,Incorrect Calculation of Multi-Byte String Length,The product does not correctly calculate the length of strings that can contain wide or multi-byte characters.,

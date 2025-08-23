@@ -1,0 +1,20 @@
+cwe_id,example_id,entry_order,IntroText,Nature,Language,ExampleCode,BodyText
+1325,GEN-1,1,"This example contains a small allocation of stack memory. When the program was first constructed, the number of times this memory was allocated was probably inconsequential and presented no problem. Over time, as the number of objects in the database grow, the number of allocations will grow - eventually consuming the available stack, i.e. ""stack exhaustion."" An attacker who is able to add elements to the database could cause stack exhaustion more rapidly than assumed by the developer.",NULL,NULL,NULL,NULL
+1325,GEN-1,2,NULL,Bad,C,"```
+```
+// Gets the size from the number of objects in a database, which over time can conceivably get very large* 
+	 int end_limit = get_nmbr_obj_from_db();
+	 int i;
+	 int *base = NULL;
+	 int *p =base;
+	 for (i = 0; i < end_limit; i++)
+	 {
+	
+	```
+		 *p = alloca(sizeof(int *)); 
+```
+// Allocate memory on the stack* 
+		 p = *p; 
+		 *// // Point to the next location to be saved* 
+		 }",NULL
+1325,GEN-1,3,NULL,NULL,NULL,NULL,"Since this uses alloca(), it allocates memory directly on the stack. If end_limit is large enough, then the stack can be entirely consumed."
